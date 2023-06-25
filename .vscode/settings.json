@@ -95,5 +95,6 @@
         "io_context": "cpp",
         "netfwd": "cpp"
     },
-    "cmake.buildTask": true
+    "cmake.buildTask": true,
+    "C_Cpp.errorSquiggles": "disabled"
 }
