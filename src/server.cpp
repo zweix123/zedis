@@ -19,11 +19,9 @@ static void do_something(int connfd) {
 }
 
 int main() {
-    //
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) { err("socket()"); }
 
-    // config
     int val = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
@@ -31,26 +29,23 @@ int main() {
     addr.sin_family = AF_INET;
     addr.sin_port = ntohs(1234);
     addr.sin_addr.s_addr = ntohl(0); // wildcard address 0.0.0.0
-    //
     int rv = bind(fd, (const sockaddr *)&addr, sizeof(addr));
     if (rv) { err("bind()"); }
 
-    //
     rv = listen(fd, SOMAXCONN);
     if (rv) { err("listen()"); }
 
     while (true) {
         struct sockaddr_in client_addr = {};
         socklen_t socklen = sizeof(client_addr);
-        int connfd = accept(fd, (struct sockaddr *)&client_addr, &socklen);  // 会阻塞
-        if (connfd < 0) {
-            continue; // error
-        }
+        int connfd = accept(fd, (struct sockaddr *)&client_addr, &socklen);
+        if (connfd < 0) { continue; } // error
 
         do_something(connfd);
 
         close(connfd);
     }
 
+    close(fd);
     return 0;
 }

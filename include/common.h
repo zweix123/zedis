@@ -1,19 +1,20 @@
-#pragma one
+#pragma once
 
-#include <cstdint>  // type
-#include <cstdio>   // std io
-#include <cstdlib>  // std func
-#include <unistd.h> // system call
-#include <cerrno>   // global variable errno
+// C header files
+#include <errno.h> // global errno var
 
-void err(const char *msg) {
-    int err = errno;
-    fprintf(stderr, "[%d] %s\n", err, msg);
-    abort(); // C std function
-}
+// C header files of syscall
+#include <unistd.h>
 
-void msg(const char *msg) {
-    fprintf(stderr, "%s\n", msg);
-}
+// C header files of net syscall
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/ip.h>
 
+// C++ header files
+#include <iostream>
+#include <cstring>
+
+// custom header files
 #include "print.h"
+#include "panic.h"
