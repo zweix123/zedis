@@ -19,10 +19,21 @@
 #include <iostream>
 #include <cstring>
 
+#include <vector>
+#include <string>
+#include <map>
+
 // custom header files
 #include "print.h"
-#include "panic.h"
-#include "util.h"
+
+void err(const char *msg) {
+    std::perror(msg);
+    std::abort();
+}
+
+void msg(const char *msg) {
+    std::perror(msg);
+}
 
 //
 const size_t k_max_msg = 4096;

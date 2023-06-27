@@ -1,4 +1,5 @@
 #include "common.h"
+#include "util.h"
 
 #include <fstream>
 int main() {

@@ -1,8 +1,6 @@
 #include "common.h"
-#include <vector>
-#include <string>
-#include <map>
-
+#include "util.h"
+#include "request.h"
 enum class ConnState {
     STATE_REQ = 0,
     STATE_RES = 1,
@@ -53,21 +51,27 @@ class Conn {
         }
         if (4 + len > rbuf_size) return false;
 
-        printf("client says: %.*s\n", len, &rbuf[4]);
+        uint32_t rescode = 0;
+        uint32_t wlen = 0;
+        // 一个完整的请求
+        int32_t err = do_request(&rbuf[4], len, &rescode, &wbuf[4 + 4], &wlen);
+        if (err) {
+            state = ConnState::STATE_END;
+            return false;
+        }
+        wlen += 4;
 
         memcpy(&wbuf[0], &len, 4);
-        memcpy(&wbuf[4], &rbuf[4], len);
-        wbuf_size = len + 4;
+        memcpy(&wbuf[4], &rescode, 4);
+        wbuf_size = 4 + wlen;
 
         size_t remain = rbuf_size - 4 - len;
         if (remain) { memmove(rbuf, &rbuf[4 + len], remain); }
         rbuf_size = remain;
 
-        state = ConnState::STATE_RES;
-        state_response();
-
         return (state == ConnState::STATE_REQ);
     }
+
     void state_response() {
         while (try_flush_buffer()) {}
     }
@@ -170,7 +174,7 @@ class EventEngine {
         put(std::move(conn));
         return 0;
     }
-    void work(int fd) { // fb是套接字
+    void join(int fd) { // fb是套接字
         // set the listen fd to nonblocking mode
         fd_set_nb(fd);
 
@@ -183,7 +187,6 @@ class EventEngine {
             struct pollfd pfd = {fd, POLLIN, 0};
             poll_args.push_back(pfd);
             // connection fds
-            std::cout << fd2conn.size() << "\n";
             for (auto const &[fd, conn] : fd2conn) {
                 if (!conn) continue;
                 struct pollfd pfd = {};
@@ -217,6 +220,8 @@ class EventEngine {
 };
 
 int main() {
+    EventEngine event_engine{};
+
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) { err("socket()"); }
 
@@ -235,8 +240,9 @@ int main() {
     rv = listen(fd, SOMAXCONN);
     if (rv) { err("listen()"); }
 
-    EventEngine event_engine = EventEngine();
-    event_engine.work(fd);
+    // return fd;
+
+    event_engine.join(fd);
 
     return 0;
 }
