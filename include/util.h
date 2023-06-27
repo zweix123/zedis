@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util.h"
+#include "common.h"
 
 int32_t read_full(int fd, char *buf, size_t n) {
     while (n > 0) {
@@ -22,4 +22,19 @@ int32_t write_all(int fd, const char *buf, size_t n) {
         buf += rv;
     }
     return 0;
+}
+
+void fd_set_nb(int fd) {
+    errno = 0;
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (errno) {
+        err("fcntl error");
+        return;
+    }
+
+    flags |= O_NONBLOCK;
+
+    errno = 0;
+    (void)fcntl(fd, F_SETFL, flags);
+    if (errno) { err("fcntl error"); }
 }

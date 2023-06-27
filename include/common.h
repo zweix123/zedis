@@ -5,6 +5,8 @@
 
 // C header files of syscall
 #include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
 
 // C header files of net syscall
 #include <arpa/inet.h>
@@ -13,6 +15,7 @@
 
 // C++ header files
 #include <cassert>
+#include <memory>
 #include <iostream>
 #include <cstring>
 
@@ -23,3 +26,7 @@
 
 //
 const size_t k_max_msg = 4096;
+
+#define DEBUG
+// #ifdef DEBUG
+// #endif
