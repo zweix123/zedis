@@ -5,13 +5,11 @@
 
 // C header files of syscall
 #include <unistd.h>
-#include <fcntl.h>
-#include <poll.h>
-
-// C header files of net syscall
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/ip.h>
+#include <fcntl.h>
+#include <poll.h>
 
 // C++ header files
 #include <cassert>
@@ -22,10 +20,9 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <unordered_map>
 
-// custom header files
-#include "print.h"
-
+// panic func
 void err(const char *msg) {
     std::perror(msg);
     std::abort();
@@ -35,9 +32,13 @@ void msg(const char *msg) {
     std::perror(msg);
 }
 
-//
+// global constant
 const size_t k_max_msg = 4096;
 
-#define DEBUG
+// #define DEBUG
 // #ifdef DEBUG
 // #endif
+
+// custom header files
+#include "util.h"
+#include "debug.h"

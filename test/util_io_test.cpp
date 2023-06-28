@@ -1,7 +1,6 @@
 #include "common.h"
-#include "util.h"
-
 #include <fstream>
+
 int main() {
     std::string filename = "test.txt";
     std::string data = "Hello, world!";
