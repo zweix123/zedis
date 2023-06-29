@@ -16,9 +16,6 @@ static int32_t send_req(int fd, const std::vector<std::string> &cmd) {
         memcpy(&wbuf[cur + 4], s.data(), s.size());
         cur += 4 + s.size();
     }
-#ifdef DEBUG
-    std::cout << "block: " << block2string(wbuf) << "\n";
-#endif
     return write_all(fd, wbuf, 4 + len);
 }
 
@@ -26,13 +23,7 @@ static int32_t read_res(int fd) {
     errno = 0;
 
     char rbuf[4 + k_max_msg + 1];
-#ifdef DEBUG
-    std::cout << "start 4 byte read\n";
-#endif
     int32_t err = read_full(fd, rbuf, 4);
-#ifdef DEBUG
-    std::cout << "4 byte read end\n";
-#endif
     if (err) {
         errno == 0 ? msg("EOF") : msg("read() error");
         return err;
@@ -44,17 +35,7 @@ static int32_t read_res(int fd) {
         msg("too long");
         return -1;
     }
-#ifdef DEBUG
-    std::cout << "len = " << len << "\n";
-#endif
-
-#ifdef DEBUG
-    std::cout << "start body read\n";
-#endif
     err = read_full(fd, &rbuf[4], len);
-#ifdef DEBUG
-    std::cout << "read body end\n";
-#endif
     if (err) {
         msg("read() error");
         return err;
@@ -84,21 +65,9 @@ int main(int argc, char **argv) {
 
     std::vector<std::string> cmd;
     for (int i = 1; i < argc; ++i) { cmd.push_back(argv[i]); }
-#ifdef DEBUG
-    std::cout << "开始发送\n";
-#endif
     int32_t err = send_req(fd, cmd);
-#ifdef DEBUG
-    std::cout << "发送完毕\n";
-#endif
     if (err) { goto L_DONE; }
-#ifdef DEBUG
-    std::cout << "开始接收\n";
-#endif
     err = read_res(fd);
-#ifdef DEBUG
-    std::cout << "接受完毕\n";
-#endif
     if (err) { goto L_DONE; }
 
 L_DONE:

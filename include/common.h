@@ -36,8 +36,6 @@ void msg(const char *msg) {
 const size_t k_max_msg = 4096;
 
 // #define DEBUG
-// #ifdef DEBUG
-// #endif
 
 // custom header files
 #include "util.h"
