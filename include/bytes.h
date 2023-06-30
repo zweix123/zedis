@@ -55,8 +55,10 @@ class Bytes {
         pos += N;
         return num;
     }
+
     int getPos() const { return pos; }
     std::byte getPosValue() const { return data[pos]; }
+
     friend std::ostream &operator<<(std::ostream &os, const Bytes &bytes) {
         os << "=======================================\n";
         int num = 0;
