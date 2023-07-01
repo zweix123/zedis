@@ -6,7 +6,10 @@
 
 // global constant
 namespace zedis {
-inline constexpr std::size_t k_max_msg = 4096 + 4;
+// 容器长度相关      -> std::size_t
+// 系统调用返回值相关 -> ssize_t
+// 传输协议相关      -> int32_t
+// 其他             -> ints
 }
 
 #define DEBUG

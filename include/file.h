@@ -2,8 +2,9 @@
 
 #include "common.h"
 #include "bytes.h"
-#include <unistd.h> // POSIX syscall
+#include <unistd.h> // d_posIX syscall
 #include <fcntl.h>  // file control syscall
+#include <poll.h>   // poll syscall
 
 namespace zedis {
 
@@ -59,30 +60,30 @@ class File {
         return errno != 0;
     }
 
-    int32_t writeByte(const Bytes &bytes) {
-        // all
-        ssize_t count = bytes.data.size();
+    ssize_t writeByte(Bytes &bytes) {
+        ssize_t count = bytes.data.size() - bytes.d_pos;
         ssize_t bytes_written = 0;
         while (bytes_written < count) {
             ssize_t rv = write(
-                m_fd, bytes.data.data() + bytes_written, count - bytes_written);
+                m_fd, bytes.data.data() + bytes.d_pos + bytes_written,
+                count - bytes_written);
             if (rv < 0) {
-                err("!!!");
+                err("write byte error");
                 return -1; // error
             }
             bytes_written += rv;
         }
+        bytes.d_pos += static_cast<std::size_t>(bytes_written);
         return (int)bytes_written;
     }
 
-    int32_t readByte(Bytes &bytes, size_t count) {
-        bytes.pos = 0;
-        // all
-        bytes.data.resize(count);
+    ssize_t readByte(Bytes &bytes, size_t count) {
+        bytes.data.resize(bytes.d_pos + count);
         ssize_t bytes_read = 0;
         while (bytes_read < count) {
-            ssize_t rv =
-                read(m_fd, bytes.data.data() + bytes_read, count - bytes_read);
+            ssize_t rv = read(
+                m_fd, bytes.data.data() + bytes.d_pos + bytes_read,
+                count - bytes_read);
             if (rv < 0) {
                 err("read byte error");
                 return -1;         // error
@@ -91,6 +92,7 @@ class File {
             bytes_read += rv;
         }
         bytes.data.resize(bytes_read);
+        bytes.d_pos += static_cast<std::size_t>(bytes_read);
         return (int)bytes_read;
     }
 };
