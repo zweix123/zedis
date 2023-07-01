@@ -1,10 +1,13 @@
 #include "common.h"
 
-#include <vector>
-#include <cstddef> // std::byte
-#include <string_view>
+#include <iostream>
 
 #include <cstring>
+
+#include <cstddef> // std::byte
+#include <bitset>
+#include <vector>
+#include <string_view>
 
 namespace zedis {
 
@@ -17,10 +20,22 @@ class Bytes {
     friend class File;
 
   public:
-    // 构造函数
     Bytes() = default;
 
-    // 将字符串追加到字节数组后面
+    void reset() { pos = 0; }
+    std::size_t size() const { return data.size(); }
+
+    int getPos() const { return pos; }
+    std::byte getPosValue() const { return data[pos]; }
+
+    friend std::ostream &operator<<(std::ostream &os, const Bytes &bytes) {
+        for (int i = 0; i < bytes.data.size(); i++)
+            os << (i == 0 ? "[" : "") << "0x" << std::hex
+               << std::to_integer<int>(bytes.data[i])
+               << (i + 1 == bytes.data.size() ? "]" : ", ");
+        return os;
+    }
+
     void appendString(const std::string &str) {
         const auto size = str.size();
         const auto data_size = data.size();
@@ -28,7 +43,6 @@ class Bytes {
         std::memcpy(data.data() + data_size, str.data(), size);
     }
 
-    // 将数字转换为字节数组追加到字节数组后面
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
     void appendNumber(const T &num, int N) {
         const auto data_size = data.size();
@@ -36,7 +50,6 @@ class Bytes {
         std::memcpy(data.data() + data_size, &num, N);
     }
 
-    // 从当前位置开始获取指定长度的字符串
     std::string_view getStringView(int len) {
         const auto data_size = data.size();
         const auto read_size =
@@ -47,26 +60,12 @@ class Bytes {
         return view;
     }
 
-    // 从当前位置开始获取指定长度的数字
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
     T getNumber(int N) {
         T num;
         std::memcpy(&num, data.data() + pos, N);
         pos += N;
         return num;
-    }
-
-    int getPos() const { return pos; }
-    std::byte getPosValue() const { return data[pos]; }
-
-    friend std::ostream &operator<<(std::ostream &os, const Bytes &bytes) {
-        os << "=======================================\n";
-        int num = 0;
-        for (const auto &byte : bytes.data) {
-            os << byte << ((++num) % 4 == 0 ? ",\n" : ", ");
-        }
-        os << "=======================================";
-        return os;
     }
 };
 
