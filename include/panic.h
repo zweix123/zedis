@@ -4,11 +4,14 @@
 #include <cstdlib>
 #include <cstdio>
 
-void err(const char *msg) {
-    std::perror(msg);
+void ERR(const char *file, const char *func, int line, const char *msg) {
+    std::fprintf(stderr, " %s:%d %s: %s\n", file, line, func, msg);
     std::abort();
 }
 
-void msg(const char *msg) {
-    std::perror(msg);
+void MSG(const char *file, const char *func, int line, const char *msg) {
+    std::fprintf(stderr, " %s:%d %s: %s\n", file, line, func, msg);
 }
+
+#define err(msg) ERR(__FILE__, __func__, __LINE__, msg)
+#define msg(msg) MSG(__FILE__, __func__, __LINE__, msg)

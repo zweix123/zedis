@@ -31,17 +31,17 @@ class Client {
         return fd;
     }
 
-    int32_t send(const std::vector<std::string> &cmd) {
+    int32_t send(const std::vector<std::string> &cmds) {
         Bytes buff;
 
         uint32_t len = 4;
-        for (const std::string &s : cmd) { len += 4 + s.size(); }
+        for (const std::string &cmd : cmds) { len += 4 + cmd.size(); }
 
         buff.appendNumber(len, 4);
-        uint32_t n = cmd.size();
+        uint32_t n = cmds.size();
         buff.appendNumber(n, 4);
 
-        for (const std::string &s : cmd) {
+        for (const std::string &s : cmds) {
             uint32_t p = (uint32_t)s.size();
             buff.appendNumber(p, 4);
             buff.appendString(s);

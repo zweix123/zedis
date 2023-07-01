@@ -3,7 +3,6 @@
 
 int main() {
     zedis::Server server{};
-    auto one = std::move(server.acceptConn());
-    one->receive();
+    server.join();
     return 0;
 }

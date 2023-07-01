@@ -33,6 +33,10 @@ class Bytes {
         reset_d();
     }
     std::size_t size() const { return data.size(); }
+    void clear() {
+        data.clear();
+        reset();
+    }
 
     friend std::ostream &operator<<(std::ostream &os, const Bytes &bytes) {
         for (int i = 0; i < bytes.data.size(); i++)

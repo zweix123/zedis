@@ -61,7 +61,7 @@ void test_pos() {
     zedis::Bytes bytes;
     std::vector<std::string> cmds{"hello", " ", "world", "."};
     int all_len = 0;
-    for (const auto &cmd : cmds) all_len += cmd.size();
+    for (const auto &cmd : cmds) all_len += 4 + cmd.size();
     int32_t len = 4 + 4 + all_len;
     bytes.appendNumber(len, 4);
     bytes.appendNumber(cmds.size(), 4);
