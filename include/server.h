@@ -102,6 +102,9 @@ class Server {
             // sprocess active connections
             for (size_t i = 1; i < poll_args.size(); ++i) {
                 if (poll_args[i].revents) {
+#ifdef DEBUG
+                    std::cout << "start a connect io\n";
+#endif
                     fd2conn[poll_args[i].fd]->connection_io();
                     // client closed normally, or something bad happened.
                     // destroy this connection

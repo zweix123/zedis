@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "file.h"
+#include "interpret.h"
 
 #include <sys/socket.h> // socket syscall
 #include <arpa/inet.h>  // net address transform
@@ -49,6 +50,19 @@ class Client {
         int32_t rv = m_f.writeByte(buff);
 
         return rv;
+    }
+
+    int32_t receive() {
+        Bytes buff;
+        auto rv = m_f.readByte(buff, 4);
+        auto len = buff.getNumber<int32_t>(4);
+        rv = m_f.readByte(buff, 4);
+        auto res_code = static_cast<CmdRes>(buff.getNumber<int>(4));
+        rv = m_f.readByte(buff, len - 8);
+        auto msg = buff.getStringView(len - 8);
+        std::cout << "res_code: " << res_code << ", " << msg << "\n";
+
+        return 0;
     }
 };
 } // namespace zedis

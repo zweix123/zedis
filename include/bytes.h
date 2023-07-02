@@ -1,9 +1,10 @@
+#pragma once
+
 #include "common.h"
 
 #include <iostream>
 #include <cstring>
 #include <cstddef> // std::byte
-#include <bitset>
 #include <vector>
 #include <string_view>
 
@@ -26,13 +27,13 @@ class Bytes {
   public:
     Bytes() = default;
 
+    std::size_t size() const { return data.size(); }
     void reset_m() { m_pos = 0; }
     void reset_d() { d_pos = 0; }
     void reset() {
         reset_m();
         reset_d();
     }
-    std::size_t size() const { return data.size(); }
     void clear() {
         data.clear();
         reset();

@@ -74,6 +74,7 @@ class File {
             bytes_written += rv;
         }
         bytes.d_pos += static_cast<std::size_t>(bytes_written);
+        std::cout << "write byte size: " << bytes_written << "\n";
         return (int)bytes_written;
     }
 
@@ -85,7 +86,7 @@ class File {
                 m_fd, bytes.data.data() + bytes.d_pos + bytes_read,
                 count - bytes_read);
             if (rv < 0) {
-                err("read byte error");
+                msg("read byte error");
                 return -1;         // error
             }
             if (rv == 0) return 0; // EOF
@@ -93,6 +94,7 @@ class File {
         }
         bytes.data.resize(bytes_read);
         bytes.d_pos += static_cast<std::size_t>(bytes_read);
+        std::cout << "read byte size: " << bytes_read << "\n";
         return (int)bytes_read;
     }
 };
