@@ -4,19 +4,9 @@
 #include "bytes.h"
 #include <unistd.h> // d_posIX syscall
 #include <fcntl.h>  // file control syscall
-#include <poll.h>   // poll syscall
+
 
 namespace zedis {
-
-std::vector<std::byte> str2data(const std::string &&str) {
-    const auto *data = reinterpret_cast<const std::byte *>(str.data());
-    return std::vector<std::byte>(data, data + str.size());
-}
-std::string data2str(const std::vector<std::byte> &data) {
-    const char *rawData = reinterpret_cast<const char *>(data.data());
-    size_t dataSize = data.size() * sizeof(std::byte);
-    return std::string(rawData, dataSize);
-}
 
 void fd_set_nb(int fd) {
     errno = 0;
@@ -67,14 +57,10 @@ class File {
             ssize_t rv = write(
                 m_fd, bytes.data.data() + bytes.d_pos + bytes_written,
                 count - bytes_written);
-            if (rv < 0) {
-                err("write byte error");
-                return -1; // error
-            }
+            if (rv < 0) return -1;
             bytes_written += rv;
         }
         bytes.d_pos += static_cast<std::size_t>(bytes_written);
-        std::cout << "write byte size: " << bytes_written << "\n";
         return (int)bytes_written;
     }
 
@@ -85,16 +71,12 @@ class File {
             ssize_t rv = read(
                 m_fd, bytes.data.data() + bytes.d_pos + bytes_read,
                 count - bytes_read);
-            if (rv < 0) {
-                msg("read byte error");
-                return -1;         // error
-            }
-            if (rv == 0) return 0; // EOF
+            if (rv < 0) return -1;
+            if (rv == 0) break; // EOF
             bytes_read += rv;
         }
         bytes.data.resize(bytes_read);
         bytes.d_pos += static_cast<std::size_t>(bytes_read);
-        std::cout << "read byte size: " << bytes_read << "\n";
         return (int)bytes_read;
     }
 };

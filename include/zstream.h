@@ -1,16 +1,17 @@
 #pragma once
 
+#include <iostream>
+
 #include <cstddef>
 #include <bitset>
 
-#include <iostream>
 #include <type_traits>
-
 #include <typeinfo>
 
 std::ostream &operator<<(std::ostream &os, std::byte b) {
     return os << std::bitset<8>(std::to_integer<int>(b));
 }
+
 template<typename T>
 std::ostream &operator<<(
     typename std::enable_if<std::is_enum<T>::value, std::ostream>::type &os,

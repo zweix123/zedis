@@ -65,6 +65,7 @@ class Bytes {
         const auto data_size = data.size();
         const auto read_size =
             std::min(data_size - m_pos, static_cast<std::size_t>(len));
+        // if len > remain size, not handle;
         auto view = std::string_view(
             reinterpret_cast<const char *>(data.data() + m_pos), read_size);
         m_pos += read_size;
