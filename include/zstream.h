@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <typeinfo>
 
-std::ostream &operator<<(std::ostream &os, std::byte b) {
+std::ostream &operator<<(std::ostream &os, const std::byte &b) {
     return os << std::bitset<8>(std::to_integer<int>(b));
 }
 
