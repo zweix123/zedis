@@ -27,4 +27,4 @@ enum class ConnState {
 
 // custom header files
 #include "panic.h"
-#include "zstream.h"
+#include "stream.h"

@@ -17,5 +17,11 @@ int main() {
     std::cout << "n2 = " << n2 << "\n";
 
     std::cout << data << "\n";
+
+    std::cout << "test move\n";
+    zedis::Bytes data_;
+    data_.appendBytes_move(std::move(data));
+    std::cout << "data.size() -> " << data.size() << "\n";
+    std::cout << "data_.size() -> " << data_.size() << "\n";
     return 0;
 }

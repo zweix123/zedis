@@ -53,12 +53,26 @@ class Bytes {
         data.resize(data_size + size);
         std::memcpy(data.data() + data_size, str.data(), size);
     }
+    void appendStringView(const std::string_view &str_view) {
+        const auto size = str_view.size();
+        const auto data_size = data.size();
+        data.resize(data_size + size);
+        std::memcpy(data.data() + data_size, str_view.data(), size);
+    }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
     void appendNumber(const T &num, int N) {
         const auto data_size = data.size();
         data.resize(data_size + N);
         std::memcpy(data.data() + data_size, &num, N);
+    }
+
+    void appendBytes_move(Bytes &&other) {
+        if (this == &other) { return; }
+        data.insert(
+            data.end(), std::make_move_iterator(other.data.begin()),
+            std::make_move_iterator(other.data.end()));
+        other.data.clear();
     }
 
     std::string_view getStringView(int len) {
@@ -74,7 +88,7 @@ class Bytes {
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
     T getNumber(int N) {
-        T num;
+        T num = 0;
         std::memcpy(&num, data.data() + m_pos, N);
         m_pos += N;
         return num;

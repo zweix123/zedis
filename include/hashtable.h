@@ -11,7 +11,11 @@ struct HNode {
     uint64_t hcode{0};
 };
 
+const size_t k_resizing_work = 128;
+const size_t k_max_load_factor = 8;
+
 using Cmp = std::function<bool(HNode *, HNode *)>;
+using NodeScan = std::function<void(HNode *, void *)>;
 
 struct HTab {
     HNode **tab{nullptr};
@@ -39,6 +43,16 @@ struct HTab {
         size--;
         return node;
     }
+    void scan(NodeScan node_scan, void *extra) {
+        if (size == 0) return;
+        for (size_t i = 0; i <= mask; ++i) {
+            HNode *node = tab[i];
+            while (node) {
+                node_scan(node, extra);
+                node = node->next;
+            }
+        }
+    }
 };
 
 HTab make_htab(size_t n) {
@@ -48,12 +62,10 @@ HTab make_htab(size_t n) {
 
 // Progressive Resizing
 
-const size_t k_resizing_work = 128;
-const size_t k_max_load_factor = 8;
-
 struct HMap {
     HTab ht1{}, ht2{};
     size_t resizing_pos = 0;
+    size_t size() const { return ht1.size + ht2.size; }
     HNode *lookup(HNode *key, Cmp cmp) {
         help_resizing();
         HNode **from = ht1.lookup(key, cmp);
@@ -102,66 +114,9 @@ struct HMap {
 
         return nullptr;
     }
-};
-
-#define container_of(ptr, type, member)                    \
-    ({                                                     \
-        const typeof(((type *)0)->member) *__mptr = (ptr); \
-        (type *)((char *)__mptr - offsetof(type, member)); \
-    })
-
-struct Entry {
-    HNode node;
-    std::string key, val;
-};
-
-uint64_t str_hash(const uint8_t *data, size_t len) {
-    uint32_t h = 0x811C9DC5;
-    for (size_t i = 0; i < len; i++) { h = (h + data[i]) * 0x01000193; }
-    return h;
-}
-
-Cmp entry_eq = [](HNode *lhs, HNode *rhs) {
-    Entry *le = container_of(lhs, Entry, node);
-    Entry *re = container_of(rhs, Entry, node);
-    return lhs->hcode == rhs->hcode && le->key == re->key;
-};
-
-class Map {
-  private:
-    HMap m_map;
-
-  public:
-    std::optional<std::string> get(std::string k) {
-        Entry key;
-        key.key = k;
-        key.node.hcode = str_hash((uint8_t *)key.key.data(), key.key.size());
-        HNode *node = m_map.lookup(&key.node, entry_eq);
-        if (!node) return std::optional<std::string>();
-
-        const std::string &val = container_of(node, Entry, node)->val;
-        return val;
-    }
-    void set(std::string k, std::string v) {
-        Entry key;
-        key.key = k;
-        key.node.hcode = str_hash((uint8_t *)key.key.data(), key.key.size());
-        HNode *node = m_map.lookup(&key.node, entry_eq);
-        if (node) container_of(node, Entry, node)->val = v;
-        else {
-            Entry *ent = new Entry();
-            ent->key.swap(key.key);
-            ent->node.hcode = key.node.hcode;
-            ent->val = v;
-            m_map.insert(&ent->node);
-        }
-    }
-    void del(std::string k) {
-        Entry key;
-        key.key = k;
-        key.node.hcode = str_hash((uint8_t *)key.key.data(), key.key.size());
-        HNode *node = m_map.pop(&key.node, entry_eq);
-        if (node) delete container_of(node, Entry, node);
+    void scan(NodeScan node_scan, void *extra) {
+        ht1.scan(node_scan, extra);
+        ht2.scan(node_scan, extra);
     }
 };
 
