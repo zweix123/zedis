@@ -17,7 +17,9 @@ class Conn {
   public:
     void check() { m_f.check(); }
     explicit Conn(File &&f, ConnState conn_state)
-        : m_f(std::move(f)), m_state{conn_state}, rbuf{}, wbuf{} {}
+        : m_f(std::move(f)), m_state{conn_state}, rbuf{}, wbuf{} {
+        m_f.set_nb();
+    }
     int get_fd() const { return m_f.data(); }
     short int get_event() const {
         if (m_state == ConnState::STATE_REQ) return POLLIN;
@@ -39,7 +41,9 @@ class Conn {
     }
 
     void state_request() {
-        while (try_fill_buffer()) {}
+        int loop_num = 0;
+        while (try_fill_buffer()) {
+        }
     }
     bool try_fill_buffer() {
         auto rv = m_f.readByte(rbuf, 4);
@@ -61,7 +65,9 @@ class Conn {
         rv = m_f.readByte(rbuf, len);
         assert(rv == len);
 
-        while (try_one_request()) {}
+        int loop_num = 0;
+        while (try_one_request()) {
+        }
         return (m_state == ConnState::STATE_REQ);
     }
 
@@ -73,16 +79,15 @@ class Conn {
         std::vector<std::string_view> cmds;
         parse_req(rbuf, cmds);
 
-        auto [res_code, res_msg] = interpret(cmds);
+        Bytes out;
+        interpret(cmds, out);
 
-        uint32_t len = 4 + 4 + res_msg.size();
-        wbuf.appendNumber(len, 4);
-        wbuf.appendNumber(static_cast<int>(res_code), 4);
-        wbuf.appendString(res_msg);
+        wbuf.appendNumber(out.size(), 4);
+        wbuf.appendBytes_move(std::move(out));
 
         m_state = ConnState::STATE_RES;
-        state_response();
 
+        state_response();
         return (m_state == ConnState::STATE_REQ);
     }
 

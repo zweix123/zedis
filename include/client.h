@@ -16,7 +16,9 @@ class Client {
     File m_f;
 
   public:
-    Client() : m_f{make_socket()} {}
+    Client() : m_f{make_socket()} {
+        //  m_f.set_nb();
+    }
 
     int make_socket() {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -54,15 +56,66 @@ class Client {
 
     void receive() {
         Bytes buff;
-        auto rv = m_f.readByte(buff, 4 + 4);
-        assert(rv == 8);
-        auto len = buff.getNumber<int32_t>(4);
-        auto res_code = static_cast<CmdRes>(buff.getNumber<int>(4));
-        auto msg_len = len - 8;
-        rv = m_f.readByte(buff, msg_len);
-        assert(rv == msg_len);
-        auto msg = buff.getStringView(msg_len);
-        std::cout << "[" << res_code << "]: " << msg << "\n";
+        int32_t err = m_f.readByte(buff, 4);
+        if (err) {
+            if (errno == 0) {
+                msg("EOF");
+            } else {
+                msg("read() error");
+            }
+            return;
+        }
+        auto len = buff.getNumber<uint32_t>(4);
+        // assert(len == buff.size());
+        m_f.readByte(buff, 1);
+        auto type = static_cast<SerType>(buff.getNumber<int>(1));
+
+        uint32_t str_len, arr_len;
+        std::string_view str, msg;
+        int64_t flag;
+
+        std::cout << "[" << type << "] ";
+        switch (type) {
+            case SerType::SER_NIL:
+                std::cout << "[nil]\n";
+                break;
+            case SerType::SER_ERR:
+                str_len = buff.getNumber<uint32_t>(4);
+
+                m_f.readByte(buff, str_len);
+                msg = buff.getStringView(str_len);
+
+                std::cout << "[err]: " << msg << "\n";
+                break;
+            case SerType::SER_STR:
+                str_len = buff.getNumber<uint32_t>(4);
+                m_f.readByte(buff, str_len);
+                str = buff.getStringView(str_len);
+
+                std::cout << "[str]: " << str << "\n";
+                break;
+            case SerType::SER_INT:
+                m_f.readByte(buff, 8);
+                flag = buff.getNumber<int64_t>(8);
+                std::cout << "[int]: " << flag << "\n";
+                break;
+            case SerType::SER_ARR:
+                std::cout << "[arr]: ";
+                m_f.readByte(buff, 4);
+                arr_len = buff.getNumber<uint32_t>(4);
+                for (int i = 0; i < arr_len; ++i) {
+                    if (i == 0) std::cout << "[";
+                    m_f.readByte(buff, 4);
+                    str_len = buff.getNumber<uint32_t>(4);
+                    m_f.readByte(buff, str_len);
+                    str = buff.getStringView(str_len);
+                    std::cout << str;
+                    std::cout << (i == (arr_len - 1) ? "]\n" : ", ");
+                }
+                break;
+            default:
+                msg("bad response");
+        }
     }
 };
 

@@ -60,18 +60,22 @@ namespace interpreter {
             m_map.insert(&ent->node);
         }
     }
-    void del(std::string k) {
+    bool del(std::string k) {
         Entry key;
         key.key = k;
         key.node.hcode = str_hash((uint8_t *)key.key.data(), key.key.size());
         HNode *node = m_map.pop(&key.node, entry_eq);
-        if (node) delete container_of(node, Entry, node);
+        if (node) {
+            delete container_of(node, Entry, node);
+            return true;
+        }
+        return false;
     }
     void scan(Bytes &buf) {
         NodeScan node_scan = [](HNode *node, void *arg) {
             Bytes &buf = *(Bytes *)arg;
             std::string_view s = container_of(node, Entry, node)->key;
-            
+
             buf.appendNumber(s.size(), 4);
             buf.appendStringView(s);
         };
@@ -83,22 +87,31 @@ bool cmd_is(const std::string_view &word, const char *cmd) {
     return word == std::string_view(cmd);
 }
 
-std::tuple<CmdRes, std::string>
-do_get(const std::vector<std::string_view> &cmd) {
+void do_get(const std::vector<std::string_view> &cmd, Bytes &out) {
     auto res = interpreter::get(std::string(cmd[1]));
-    if (res.has_value()) return std::make_tuple(CmdRes::RES_OK, res.value());
-    else
-        return std::make_tuple(CmdRes::RES_NX, "");
+    if (res.has_value()) {
+        auto &s = res.value();
+        out.appendNumber(static_cast<uint8_t>(SerType::SER_STR), 1);
+        out.appendNumber(s.size(), 4);
+        out.appendString(s);
+    } else {
+        out.appendNumber(static_cast<uint8_t>(SerType::SER_NIL), 1);
+    }
 }
-std::tuple<CmdRes, std::string>
-do_set(const std::vector<std::string_view> &cmd) {
+void do_set(const std::vector<std::string_view> &cmd, Bytes &out) {
     interpreter::set(std::string(cmd[1]), std::string(cmd[2]));
-    return std::make_tuple(CmdRes::RES_OK, std::string());
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_NIL), 1);
 }
-std::tuple<CmdRes, std::string>
-do_del(const std::vector<std::string_view> &cmd) {
-    interpreter::del(std::string(cmd[1]));
-    return std::make_tuple(CmdRes::RES_OK, std::string());
+void do_del(const std::vector<std::string_view> &cmd, Bytes &out) {
+    auto flag = interpreter::del(std::string(cmd[1]));
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_INT), 1);
+    out.appendNumber(flag, 8);
+}
+
+void do_keys(const std::vector<std::string_view> &cmd, Bytes &out) {
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_ARR), 1);
+    out.appendNumber(interpreter::m_map.size(), 4);
+    interpreter::scan(out);
 }
 
 void parse_req(Bytes &data, std::vector<std::string_view> &cmds) {
@@ -109,16 +122,21 @@ void parse_req(Bytes &data, std::vector<std::string_view> &cmds) {
     }
 }
 
-std::tuple<CmdRes, std::string> interpret(std::vector<std::string_view> &cmds) {
-    if (cmds.size() == 2 && cmd_is(cmds[0], "get")) {
-        return do_get(cmds);
+void interpret(std::vector<std::string_view> &cmds, Bytes &out) {
+    if (cmds.size() == 1 && cmd_is(cmds[0], "keys")) {
+        do_keys(cmds, out);
+    } else if (cmds.size() == 2 && cmd_is(cmds[0], "get")) {
+        do_get(cmds, out);
     } else if (cmds.size() == 3 && cmd_is(cmds[0], "set")) {
-        return do_set(cmds);
-
+        do_set(cmds, out);
     } else if (cmds.size() == 2 && cmd_is(cmds[0], "del")) {
-        return do_del(cmds);
+        do_del(cmds, out);
     } else {
-        return std::make_tuple(CmdRes::RES_ERR, "Unknown Cmd");
+        out.appendNumber(static_cast<uint8_t>(SerType::SER_ERR), 1);
+        std::string_view msg = "Unknown cmd";
+        uint32_t len = (uint32_t)msg.size();
+        out.appendNumber(len, 4);
+        out.appendStringView(msg);
     }
 }
 

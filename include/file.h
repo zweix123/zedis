@@ -5,7 +5,6 @@
 #include <unistd.h> // d_posIX syscall
 #include <fcntl.h>  // file control syscall
 
-
 namespace zedis {
 
 void fd_set_nb(int fd) {
@@ -71,8 +70,9 @@ class File {
             ssize_t rv = read(
                 m_fd, bytes.data.data() + bytes.d_pos + bytes_read,
                 count - bytes_read);
-            if (rv < 0) return -1;
-            if (rv == 0) break; // EOF
+            if (rv <= 0) return -1;
+            // if (rv == 0) break; // EOF
+            assert((size_t)rv <= count - bytes_read);
             bytes_read += rv;
         }
         bytes.data.resize(bytes_read);
