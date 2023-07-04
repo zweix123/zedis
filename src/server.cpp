@@ -4,5 +4,6 @@
 int main() {
     zedis::Server server{};
     server.join();
+
     return 0;
 }

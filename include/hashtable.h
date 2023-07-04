@@ -23,7 +23,8 @@ struct HTab {
 
     void insert(HNode *node) {
         size_t pos = node->hcode & mask;
-        node->next = tab[pos];
+        HNode *next = tab[pos];
+        node->next = next;
         tab[pos] = node;
         size++;
     }
@@ -31,9 +32,11 @@ struct HTab {
         if (!tab) return nullptr;
         size_t pos = key->hcode & mask;
         HNode **from = &tab[pos];
+        (void)*from;
+
         while (*from) {
             if (cmp(*from, key)) return from;
-            from = &((*from)->next);
+            from = &(*from)->next;
         }
         return nullptr;
     }
@@ -45,7 +48,7 @@ struct HTab {
     }
     void scan(NodeScan node_scan, void *extra) {
         if (size == 0) return;
-        for (size_t i = 0; i <= mask; ++i) {
+        for (size_t i = 0; i < mask + 1; ++i) {
             HNode *node = tab[i];
             while (node) {
                 node_scan(node, extra);
@@ -53,11 +56,11 @@ struct HTab {
             }
         }
     }
-};
+}; // namespace zedis
 
 HTab make_htab(size_t n) {
     assert(n > 0 && ((n - 1) & n) == 0);
-    return HTab{new HNode *[n], n, 0};
+    return HTab{new HNode *[n] {}, n - 1, 0};
 }
 
 // Progressive Resizing
@@ -65,6 +68,11 @@ HTab make_htab(size_t n) {
 struct HMap {
     HTab ht1{}, ht2{};
     size_t resizing_pos = 0;
+    ~HMap() {
+        // assert(ht1.size + ht2.size == 0);
+        // free(ht1.tab);
+        // free(ht2.tab);
+    }
     size_t size() const { return ht1.size + ht2.size; }
     HNode *lookup(HNode *key, Cmp cmp) {
         help_resizing();
@@ -90,7 +98,7 @@ struct HMap {
         }
     }
     void insert(HNode *node) {
-        if (!ht1.tab) ht1 = make_htab(4);
+        if (!ht1.tab) { ht1 = make_htab(4); }
         ht1.insert(node);
         if (!ht2.tab) {
             size_t load_factor = ht1.size / (ht1.mask + 1);
@@ -100,7 +108,6 @@ struct HMap {
     }
     void start_resizing() {
         assert(ht2.tab == nullptr);
-
         ht2 = std::move(ht1);
         ht1 = make_htab((ht2.mask + 1) << 1);
         resizing_pos = 0;

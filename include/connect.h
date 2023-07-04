@@ -41,44 +41,58 @@ class Conn {
     }
 
     void state_request() {
-        int loop_num = 0;
-        while (try_fill_buffer()) {
-        }
+        while (try_fill_buffer()) {}
+        //         while (try_fill_buffer()) {}
     }
     bool try_fill_buffer() {
-        auto rv = m_f.readByte(rbuf, 4);
-        if (rv < 0 && errno == EAGAIN) { return false; }
-        if (rv < 0) {
-            err("read() error");
-            m_state = ConnState::STATE_END;
-            return false;
-        }
-        if (rv == 0) {
-            if (rbuf.size() > 0) msg("unexpected EOF");
-            else
-                msg("EOF");
-            m_state = ConnState::STATE_END;
-            return false;
-        }
-        assert(rbuf.size() == 4);
-        auto len = rbuf.getNumber<uint32_t>(4);
-        rv = m_f.readByte(rbuf, len);
-        assert(rv == len);
-
-        int loop_num = 0;
-        while (try_one_request()) {
-        }
+        do {
+            auto rv = m_f.readByte_nb(rbuf, 4);
+            switch (rv) {
+                case -1:
+                    msg("nb read() error");
+                    m_state = ConnState::STATE_END;
+                    return false;
+                case 0:
+                    break;
+                case 1:
+                    return false;
+                case 2:
+                    rbuf.size() ? msg("unexpected EOF") : msg("EOF");
+                    m_state = ConnState::STATE_END;
+                    return false;
+                default:
+                    break;
+            }
+            auto len = rbuf.getNumber<uint32_t>(4);
+            rv = m_f.readByte_nb(rbuf, len);
+            switch (rv) {
+                case -1:
+                    msg("nb read() error");
+                    m_state = ConnState::STATE_END;
+                    return false;
+                case 0:
+                    break;
+                case 1:
+                    return false;
+                case 2:
+                    rbuf.size() ? msg("unexpected EOF") : msg("EOF");
+                    m_state = ConnState::STATE_END;
+                    return false;
+                default:
+                    break;
+            }
+        } while (try_one_request());
         return (m_state == ConnState::STATE_REQ);
     }
 
     bool try_one_request() {
-        if (rbuf.size() == 0) return false;
-        // assert(len + 4 == rbuf.size());
-        // len had handled
-
         std::vector<std::string_view> cmds;
-        parse_req(rbuf, cmds);
-
+        auto ok = parse_req(rbuf, cmds);
+        if (!ok) {
+            msg("bad req");
+            m_state = ConnState::STATE_END;
+            return false;
+        }
         Bytes out;
         interpret(cmds, out);
 
@@ -96,21 +110,28 @@ class Conn {
     }
 
     bool try_flush_buffer() {
-        ssize_t rv = m_f.writeByte(wbuf);
-
-        if (rv < 0 && errno == EAGAIN) return false;
-        if (rv < 0) {
-            msg("write() error");
-            m_state = ConnState::STATE_END;
-            return false;
+        auto rv = m_f.writeByte_nb(wbuf);
+        switch (rv) {
+            case -1:
+                msg("nb write() error");
+                m_state = ConnState::STATE_END;
+                return false;
+            case 0:
+                break;
+            case 1:
+                return false;
+            default:
+                break;
         }
-        if (rv == wbuf.size()) {
+        if (wbuf.read_end()) {
             m_state = ConnState::STATE_REQ;
             rbuf.clear();
             wbuf.clear();
             return false;
         }
+
         return true;
     }
 };
+
 } // namespace zedis

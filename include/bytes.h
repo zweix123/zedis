@@ -14,36 +14,30 @@ class File;
 
 class Bytes {
   private:
-    std::vector<std::byte> data;
-    std::size_t m_pos = 0, d_pos = 0;
-    /* 我们希望对Bytes的任何交互都是有副作用
-     * + 内存向Bytes写: 直接在vector的末尾添加, 不同维护
-     * + 内存从Bytes读: 由m_pos维护
-     * + Bytes向fd写 : 由d_pos维护
-     * + Bytes从fd读 : 干嘛干嘛, 你还想一边往里写再一边往里读?
-     */
+    std::vector<std::byte> data{};
+    std::size_t pos{0};
+
     friend class File;
 
   public:
     Bytes() = default;
 
     std::size_t size() const { return data.size(); }
-    void reset_m() { m_pos = 0; }
-    void reset_d() { d_pos = 0; }
-    void reset() {
-        reset_m();
-        reset_d();
-    }
+    void reset() { pos = 0; }
     void clear() {
         data.clear();
         reset();
     }
+    bool read_end() const { return pos == data.size(); }
 
     friend std::ostream &operator<<(std::ostream &os, const Bytes &bytes) {
+        std::cout << std::hex;
         for (int i = 0; i < bytes.data.size(); i++)
-            os << (i == 0 ? "[" : "") << "0x" << std::hex
+            os << (i == 0 ? "[" : "") << "0x"
                << std::to_integer<int>(bytes.data[i])
                << (i + 1 == bytes.data.size() ? "]" : ", ");
+        std::cout << std::dec;
+        os << " len = " << bytes.size();
         return os;
     }
 
@@ -78,19 +72,19 @@ class Bytes {
     std::string_view getStringView(int len) {
         const auto data_size = data.size();
         const auto read_size =
-            std::min(data_size - m_pos, static_cast<std::size_t>(len));
+            std::min(data_size - pos, static_cast<std::size_t>(len));
         // if len > remain size, not handle;
         auto view = std::string_view(
-            reinterpret_cast<const char *>(data.data() + m_pos), read_size);
-        m_pos += read_size;
+            reinterpret_cast<const char *>(data.data() + pos), read_size);
+        pos += read_size;
         return view;
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
     T getNumber(int N) {
         T num = 0;
-        std::memcpy(&num, data.data() + m_pos, N);
-        m_pos += N;
+        std::memcpy(&num, data.data() + pos, N);
+        pos += N;
         return num;
     }
 };

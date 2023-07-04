@@ -11,6 +11,33 @@
 
 namespace zedis {
 
+void out_nil(Bytes &out) {
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_NIL), 1);
+}
+
+void out_str(Bytes &out, const std::string &val) {
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_STR), 1);
+    out.appendNumber<uint32_t>(val.size(), 4);
+    out.appendString(val);
+}
+
+void out_int(Bytes &out, int64_t val) {
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_INT), 1);
+    out.appendNumber<int64_t>(val, 8);
+}
+
+void out_err(Bytes &out, CmdRes code, const std::string &msg) {
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_ERR), 1);
+    out.appendNumber(static_cast<uint32_t>(code), 4);
+    out.appendNumber<uint32_t>(msg.size(), 4);
+    out.appendString(msg);
+}
+
+void out_arr(Bytes &out, uint32_t n) {
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_ARR), 1);
+    out.appendNumber<uint32_t>(n, 4);
+}
+
 namespace interpreter {
 
 #define container_of(ptr, type, member)                    \
@@ -75,9 +102,8 @@ namespace interpreter {
         NodeScan node_scan = [](HNode *node, void *arg) {
             Bytes &buf = *(Bytes *)arg;
             std::string_view s = container_of(node, Entry, node)->key;
-
-            buf.appendNumber(s.size(), 4);
-            buf.appendStringView(s);
+            auto t = std::string(s);
+            out_str(buf, t);
         };
         m_map.scan(node_scan, &buf);
     }
@@ -100,26 +126,25 @@ void do_get(const std::vector<std::string_view> &cmd, Bytes &out) {
 }
 void do_set(const std::vector<std::string_view> &cmd, Bytes &out) {
     interpreter::set(std::string(cmd[1]), std::string(cmd[2]));
-    out.appendNumber(static_cast<uint8_t>(SerType::SER_NIL), 1);
+    out_nil(out);
 }
 void do_del(const std::vector<std::string_view> &cmd, Bytes &out) {
-    auto flag = interpreter::del(std::string(cmd[1]));
-    out.appendNumber(static_cast<uint8_t>(SerType::SER_INT), 1);
-    out.appendNumber(flag, 8);
+    out_int(out, interpreter::del(std::string(cmd[1])));
 }
 
 void do_keys(const std::vector<std::string_view> &cmd, Bytes &out) {
-    out.appendNumber(static_cast<uint8_t>(SerType::SER_ARR), 1);
-    out.appendNumber(interpreter::m_map.size(), 4);
+    out_arr(out, interpreter::m_map.size());
     interpreter::scan(out);
 }
 
-void parse_req(Bytes &data, std::vector<std::string_view> &cmds) {
+bool parse_req(Bytes &data, std::vector<std::string_view> &cmds) {
+    if (data.read_end()) return false;
     auto cmd_num = data.getNumber<uint32_t>(4);
     while (cmd_num--) {
         auto cmd_len = data.getNumber<uint32_t>(4);
         cmds.emplace_back(data.getStringView(cmd_len));
     }
+    return true;
 }
 
 void interpret(std::vector<std::string_view> &cmds, Bytes &out) {
@@ -132,11 +157,7 @@ void interpret(std::vector<std::string_view> &cmds, Bytes &out) {
     } else if (cmds.size() == 2 && cmd_is(cmds[0], "del")) {
         do_del(cmds, out);
     } else {
-        out.appendNumber(static_cast<uint8_t>(SerType::SER_ERR), 1);
-        std::string_view msg = "Unknown cmd";
-        uint32_t len = (uint32_t)msg.size();
-        out.appendNumber(len, 4);
-        out.appendStringView(msg);
+        out_err(out, CmdRes::RES_NX, "Unknown cmd");
     }
 }
 
