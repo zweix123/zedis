@@ -40,4 +40,4 @@ enum class SerType {
 
 // custom header files
 #include "panic.h"
-#include "stream.h"
+#include "ztream.h"

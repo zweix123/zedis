@@ -28,7 +28,7 @@ class Bytes {
         data.clear();
         reset();
     }
-    bool read_end() const { return pos == data.size(); }
+    bool is_read_end() const { return pos == data.size(); }
 
     friend std::ostream &operator<<(std::ostream &os, const Bytes &bytes) {
         std::cout << std::hex;

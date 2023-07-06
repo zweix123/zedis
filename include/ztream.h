@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <bitset>
+#include <tuple>
 
 #include <type_traits>
 #include <typeinfo>

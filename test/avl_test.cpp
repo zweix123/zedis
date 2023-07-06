@@ -165,7 +165,7 @@ int main() {
     assert(!c.del(124));
     assert(c.del(123));
     container_verify(c, {});
-    std::cout << "base test over\n";
+    std::cout << "base test pass\n";
 
     // sequential insertion
     std::multiset<uint32_t> ref;
@@ -174,7 +174,7 @@ int main() {
         ref.insert(i);
         container_verify(c, ref);
     }
-    std::cout << "sequential insertion over\n";
+    std::cout << "sequential insertion pass\n";
 
     // random insertion
     for (uint32_t i = 0; i < 100; i++) {
@@ -183,7 +183,7 @@ int main() {
         ref.insert(val);
         container_verify(c, ref);
     }
-    std::cout << "random insertion over\n";
+    std::cout << "random insertion pass\n";
 
     // random deletion
     for (uint32_t i = 0; i < 200; i++) {
@@ -197,7 +197,7 @@ int main() {
         }
         container_verify(c, ref);
     }
-    std::cout << "random deletion over\n";
+    std::cout << "random deletion pass\n";
 
     // insertion/deletion at various positions
     for (uint32_t i = 0; i < 200; ++i) {
