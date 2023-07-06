@@ -55,7 +55,7 @@ int main() {
     assert(!zedis::interpreter::del("124"));
     assert(zedis::interpreter::del("123"));
     hashtable_verify({});
-    std::cout << "base test pass\n";
+    std::cout << "base test \033[92mpass!\033[0m\n";
 
     // sequential insertion
     std::set<std::string> ref;
@@ -66,7 +66,7 @@ int main() {
         ref.insert(k);
     }
     hashtable_verify(ref);
-    std::cout << "sequential insertion pass\n";
+    std::cout << "sequential insertion \033[92mpass!\033[0m\n";
 
     // random deletion
     int num = 0;
@@ -82,7 +82,7 @@ int main() {
         }
         hashtable_verify(ref);
     }
-    std::cout << "random deletion pass\n";
+    std::cout << "random deletion \033[92mpass!\033[0m\n";
 
     num = base / 2 - num;
     while (num--) {
@@ -93,8 +93,11 @@ int main() {
         ref.erase(*it);
     }
     // std::cout << num << ", " << base / 2 << "\n";
-    std::cout << "deletion pass\n";
+    std::cout << "deletion \033[92mpass!\033[0m\n";
 
     zedis::interpreter::dispose();
+
+    std::cout << "\033[94mtest all pass\033[0m\n";
+
     return 0;
 }

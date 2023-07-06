@@ -15,7 +15,7 @@ struct Container {
 
     void add(uint32_t val) {
         Data *data = new Data{};
-        // init(&data->node);
+
         data->val = val;
 
         if (!root) {
@@ -101,8 +101,6 @@ void dispose(Container &c) {
     }
 }
 
-//
-
 static void test_insert(uint32_t sz) {
     for (uint32_t val = 0; val < sz; ++val) {
         Container c;
@@ -165,7 +163,7 @@ int main() {
     assert(!c.del(124));
     assert(c.del(123));
     container_verify(c, {});
-    std::cout << "base test pass\n";
+    std::cout << "base test \033[92mpass!\033[0m\n";
 
     // sequential insertion
     std::multiset<uint32_t> ref;
@@ -174,7 +172,7 @@ int main() {
         ref.insert(i);
         container_verify(c, ref);
     }
-    std::cout << "sequential insertion pass\n";
+    std::cout << "sequential insertion \033[92mpass!\033[0m\n";
 
     // random insertion
     for (uint32_t i = 0; i < 100; i++) {
@@ -183,7 +181,7 @@ int main() {
         ref.insert(val);
         container_verify(c, ref);
     }
-    std::cout << "random insertion pass\n";
+    std::cout << "random insertion \033[92mpass!\033[0m\n";
 
     // random deletion
     for (uint32_t i = 0; i < 200; i++) {
@@ -197,17 +195,19 @@ int main() {
         }
         container_verify(c, ref);
     }
-    std::cout << "random deletion pass\n";
+    std::cout << "random deletion \033[92mpass!\033[0m\n";
 
     // insertion/deletion at various positions
     for (uint32_t i = 0; i < 200; ++i) {
-        std::cout << "The " << i
-                  << " insertion/deletion at various positions\n";
+        std::cout << "insertion/deletion at various positions with i = " << i;
         test_insert(i);
         test_insert_dup(i);
         test_remove(i);
+        std::cout << " \033[92mpass!\033[0m\n";
     }
+
     dispose(c);
+    std::cout << "\033[94mtest all pass\033[0m\n";
 
     return 0;
 }
