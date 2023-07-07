@@ -1,5 +1,5 @@
 #include "common.h"
-#include "interpret.h"
+#include "execute.h"
 #include "zand.h"
 #include <vector>
 #include <string>
@@ -9,8 +9,8 @@ int base = 420;
 
 void scan() {
     zedis::Bytes buf;
-    buf.appendNumber(zedis::interpreter::m_map.size(), 4);
-    zedis::interpreter::scan(buf);
+    buf.appendNumber(zedis::core::m_map.size(), 4);
+    zedis::core::scan(buf);
 
     auto num = buf.getNumber<size_t>(4);
     for (int i = 0; i < num; ++i) {
@@ -25,8 +25,8 @@ std::set<std::string> get_all() {
     std::set<std::string> res;
 
     zedis::Bytes buf;
-    buf.appendNumber(zedis::interpreter::m_map.size(), 4);
-    zedis::interpreter::scan(buf);
+    buf.appendNumber(zedis::core::m_map.size(), 4);
+    zedis::core::scan(buf);
 
     auto num = buf.getNumber<size_t>(4);
     for (int i = 0; i < num; ++i) {
@@ -46,14 +46,14 @@ void hashtable_verify(const std::set<std::string> &ref) {
 }
 
 int main() {
-    // zedis::interpreter::scan();
+    // zedis::core::scan();
     // exit(0);
     // some quick tests
     hashtable_verify({});
-    zedis::interpreter::set("123", "123");
+    zedis::core::set("123", "123");
     hashtable_verify({"123"});
-    assert(!zedis::interpreter::del("124"));
-    assert(zedis::interpreter::del("123"));
+    assert(!zedis::core::del("124"));
+    assert(zedis::core::del("123"));
     hashtable_verify({});
     std::cout << "base test \033[92mpass!\033[0m\n";
 
@@ -62,7 +62,7 @@ int main() {
     for (int i = 0; i < base; i++) {
         auto k = g_rand_str();
         auto v = g_rand_str();
-        zedis::interpreter::set(k, v);
+        zedis::core::set(k, v);
         ref.insert(k);
     }
     hashtable_verify(ref);
@@ -74,10 +74,10 @@ int main() {
         auto s = g_rand_str();
         auto it = ref.find(s);
         if (it == ref.end()) {
-            assert(!zedis::interpreter::del(s));
+            assert(!zedis::core::del(s));
         } else {
             ++num;
-            assert(zedis::interpreter::del(s));
+            assert(zedis::core::del(s));
             ref.erase(s);
         }
         hashtable_verify(ref);
@@ -89,13 +89,13 @@ int main() {
         auto it = ref.begin();
         std::advance(it, g_rand_int(0, ref.size() - 1));
         auto s = *it;
-        assert(zedis::interpreter::del(s));
+        assert(zedis::core::del(s));
         ref.erase(*it);
     }
     // std::cout << num << ", " << base / 2 << "\n";
     std::cout << "deletion \033[92mpass!\033[0m\n";
 
-    zedis::interpreter::dispose();
+    zedis::core::dispose();
 
     std::cout << "\033[94mtest all pass\033[0m\n";
 

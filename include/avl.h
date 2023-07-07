@@ -18,19 +18,16 @@ namespace avl {
             , right{nullptr}
             , parent{nullptr} {}
     };
-    // void init(AVLNode *node) {
-    //     node->depth = 1;
-    //     node->cnt = 1;
-    //     node->left = node->right = node->parent = nullptr;
-    // }
+
     uint32_t get_depth(AVLNode *node) {
         return node ? node->depth : 0;
     }
     uint32_t get_cnt(AVLNode *node) {
         return node ? node->cnt : 0;
     }
-    // 为什么上面那些明显是Get的方法也要用函数? 因为可以自动处理node为空
-    // 是的, 面向对象的话会导致要求实例必须有效, 但是在树的场景下很容易无效
+    // 为什么上面这些很容易放在类中作为Get方法也要写成函数?
+    // 因为这样可以自动处理node为nullptr, 是的, 在面向对象的思想中有一个前提,
+    // 就是对象默认有效, 但是在树的场景下很容易遇到空节点
 
     void update(AVLNode *node) {
         node->depth =
@@ -130,6 +127,32 @@ namespace avl {
                 return victim;
             }
         }
+    }
+
+    AVLNode *offset(AVLNode *node, int64_t offset) {
+        int64_t pos = 0; // relative to the starting node
+        while (offset != pos) {
+            if (pos < offset && pos + get_cnt(node->right) >= offset) {
+                // the target is inside the right subtree
+                node = node->right;
+                pos += get_cnt(node->left) + 1;
+            } else if (pos > offset && pos - get_cnt(node->left) <= offset) {
+                // the target is inside the left subtree
+                node = node->left;
+                pos -= get_cnt(node->right) + 1;
+            } else {
+                // go to the parent
+                AVLNode *parent = node->parent;
+                if (!parent) { return NULL; }
+                if (parent->right == node) {
+                    pos -= get_cnt(node->left) + 1;
+                } else {
+                    pos += get_cnt(node->right) + 1;
+                }
+                node = parent;
+            }
+        }
+        return node;
     }
 
 } // namespace avl

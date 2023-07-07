@@ -21,9 +21,14 @@ using Cmp = std::function<bool(HNode *, HNode *)>;
 using NodeScan = std::function<void(HNode *, void *)>;
 using Nodedispose = std::function<void(HNode *)>;
 
-struct HTab {
+class HMap;
+
+class HTab {
+  private:
     std::vector<HNode *> tab{0};
     size_t mask{0}, size{0};
+
+    friend HMap;
 
     HTab() = default;
     HTab(size_t n) : tab{n}, mask{n - 1}, size{0} {
@@ -78,11 +83,13 @@ struct HTab {
     }
 };
 
-struct HMap {
+class HMap {
+  private:
     HTab ht1{}, ht2{};
-    size_t resizing_pos = 0;
-    HMap() = default;
+    size_t resizing_pos{0};
 
+  public:
+    HMap() = default;
     size_t size() const { return ht1.size + ht2.size; }
     HNode *lookup(HNode *key, Cmp cmp) {
         help_resizing();

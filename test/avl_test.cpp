@@ -54,7 +54,6 @@ struct Container {
 
 void verify(avl::AVLNode *parent, avl::AVLNode *node) {
     if (!node) { return; }
-
     assert(node->parent == parent);
     verify(node, node->left);
     verify(node, node->right);
@@ -153,6 +152,36 @@ static void test_remove(uint32_t sz) {
     }
 }
 
+void tree_dispose(avl::AVLNode *node) {
+    if (node) {
+        tree_dispose(node->left);
+        tree_dispose(node->right);
+        delete container_of(node, Data, node);
+    }
+}
+
+void test_case(uint32_t sz) {
+    Container c;
+    for (uint32_t i = 0; i < sz; ++i) { c.add(i); }
+
+    avl::AVLNode *min = c.root;
+    while (min->left) { min = min->left; }
+    for (uint32_t i = 0; i < sz; ++i) {
+        avl::AVLNode *node = avl::offset(min, (int64_t)i);
+        assert(container_of(node, Data, node)->val == i);
+
+        for (uint32_t j = 0; j < sz; ++j) {
+            int64_t offset = (int64_t)j - (int64_t)i;
+            avl::AVLNode *n2 = avl::offset(node, offset);
+            assert(container_of(n2, Data, node)->val == j);
+        }
+        assert(!avl::offset(node, -(int64_t)i - 1));
+        assert(!avl::offset(node, sz - i));
+    }
+
+    tree_dispose(c.root);
+}
+
 int main() {
     Container c;
 
@@ -207,6 +236,13 @@ int main() {
     }
 
     dispose(c);
+
+    for (uint32_t i = 1; i < 500; ++i) {
+        std::cout << "offset with i = " << i;
+        test_case(i);
+        std::cout << " \033[92mpass!\033[0m\n";
+    }
+
     std::cout << "\033[94mtest all pass\033[0m\n";
 
     return 0;

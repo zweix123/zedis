@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "file.h"
-#include "interpret.h"
+#include "execute.h"
 
 #include <poll.h> // poll syscall
 

@@ -38,7 +38,7 @@ void out_arr(Bytes &out, uint32_t n) {
     out.appendNumber<uint32_t>(n, 4);
 }
 
-namespace interpreter {
+namespace core {
 
     struct Entry {
         HNode node;
@@ -48,7 +48,7 @@ namespace interpreter {
         Entry(std::string &&k, const std::string &v, uint64_t hcode)
             : key(std::move(k)), val{v}, node{hcode} {}
     };
-    HMap m_map;
+    HMap m_map{};
 
     Cmp entry_eq = [](HNode *lhs, HNode *rhs) {
         Entry *le = container_of(lhs, Entry, node);
@@ -93,14 +93,14 @@ namespace interpreter {
         };
         m_map.dispose(node_dispose);
     }
-}; // namespace interpreter
+}; // namespace core
 
 bool cmd_is(const std::string_view word, const char *cmd) {
     return word == std::string_view(cmd);
 }
 
 void do_get(const std::vector<std::string> &cmd, Bytes &out) {
-    auto res = interpreter::get(cmd[1]);
+    auto res = core::get(cmd[1]);
     if (res.has_value()) {
         out_str(out, res.value());
     } else {
@@ -108,16 +108,16 @@ void do_get(const std::vector<std::string> &cmd, Bytes &out) {
     }
 }
 void do_set(const std::vector<std::string> &cmd, Bytes &out) {
-    interpreter::set(cmd[1], cmd[2]);
+    core::set(cmd[1], cmd[2]);
     out_nil(out);
 }
 void do_del(const std::vector<std::string> &cmd, Bytes &out) {
-    out_int(out, interpreter::del(cmd[1]));
+    out_int(out, core::del(cmd[1]));
 }
 
 void do_keys(const std::vector<std::string> &cmd, Bytes &out) {
-    out_arr(out, interpreter::m_map.size());
-    interpreter::scan(out);
+    out_arr(out, core::m_map.size());
+    core::scan(out);
 }
 
 bool parse_req(Bytes &data, std::vector<std::string> &cmd) {
