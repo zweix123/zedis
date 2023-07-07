@@ -26,16 +26,27 @@ void out_int(Bytes &out, int64_t val) {
     out.appendNumber<int64_t>(val, 8);
 }
 
-void out_err(Bytes &out, CmdRes code, const std::string &msg) {
+void out_err(Bytes &out, CmdErr code, const std::string &msg) {
     out.appendNumber(static_cast<uint8_t>(SerType::SER_ERR), 1);
     out.appendNumber(static_cast<uint32_t>(code), 4);
     out.appendNumber<uint32_t>(msg.size(), 4);
     out.appendString(msg);
 }
 
+static void out_dbl(Bytes &out, double val) {
+    out.appendNumber(static_cast<uint8_t>(SerType::SER_DBL), 1);
+    out.appendNumber(val, 8);
+}
+
 void out_arr(Bytes &out, uint32_t n) {
     out.appendNumber(static_cast<uint8_t>(SerType::SER_ARR), 1);
     out.appendNumber<uint32_t>(n, 4);
+}
+
+void out_update_arr(Bytes &out, uint32_t n) {
+    auto type = static_cast<SerType>(out.getNumber<int>(1));
+    assert(type == SerType::SER_ARR);
+    out.insertNumber(n, 1, 4);
 }
 
 namespace core {
@@ -140,7 +151,7 @@ void interpret(std::vector<std::string> &cmds, Bytes &out) {
     } else if (cmds.size() == 2 && cmd_is(cmds[0], "del")) {
         do_del(cmds, out);
     } else {
-        out_err(out, CmdRes::RES_NX, "Unknown cmd");
+        out_err(out, CmdErr::ERR_UNKNOWN, "Unknown cmd");
     }
 }
 

@@ -61,6 +61,13 @@ class Bytes {
         std::memcpy(data.data() + data_size, &num, N);
     }
 
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
+    void insertNumber(const T &num, std::size_t index, int N) {
+        assert(0 <= index && index < data.size());
+        if (index + N > data.size()) data.resize(index + N);
+        std::memcpy(data.data() + index, &num, N);
+    }
+
     void appendBytes_move(Bytes &&other) {
         if (this == &other) { return; }
         data.insert(

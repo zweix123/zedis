@@ -59,14 +59,14 @@ class Client {
         uint32_t str_len, arr_len;
         std::string_view str, msg;
         int64_t flag;
-        CmdRes res_code;
+        CmdErr res_code;
 
         switch (type) {
             case SerType::SER_NIL:
                 std::cout << pre << "[nil]\n";
                 break;
             case SerType::SER_ERR:
-                res_code = static_cast<CmdRes>(buff.getNumber<uint32_t>(4));
+                res_code = static_cast<CmdErr>(buff.getNumber<uint32_t>(4));
                 str_len = buff.getNumber<uint32_t>(4);
                 msg = buff.getStringView(str_len);
                 std::cout << pre << "[err]: " << res_code << " " << msg << "\n";
