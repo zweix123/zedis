@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common.h"
 #include <iostream>
 #include <vector>
@@ -32,6 +34,7 @@ class HTab {
 
     HTab() = default;
     HTab(size_t n) : tab{n}, mask{n - 1}, size{0} {
+        std::cout << "!!!HTab -> n = " << n << "\n";
         assert(n > 0 && ((n - 1) & n) == 0);
     }
 

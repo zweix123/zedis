@@ -67,9 +67,13 @@ class ZNodeCollection {
             return *this;
         }
         bool operator!=(const iterator &other) const {
+            if (!ptr_) return false;
             return step_ < other.step_;
         }
-        ZNode &operator*() { return *ptr_; }
+        ZNode &operator*() {
+            assert(ptr_);
+            return *ptr_;
+        }
     };
 
     ZNodeCollection(ZNode *data, int64_t length)
@@ -79,6 +83,8 @@ class ZNodeCollection {
     iterator end() { return iterator(data_, length_); }
     iterator cbegin() const { return iterator(data_, 0); }
     iterator cend() const { return iterator(data_, length_); }
+
+    int64_t size() const { return length_; }
 
     friend std::ostream &
     operator<<(std::ostream &os, const ZNodeCollection &znode_colloction) {
@@ -123,7 +129,7 @@ class ZSet {
     }
 
   public:
-    ZSet() = default;
+    // ZSet() = default;
     ~ZSet() {
         std::function<void(avl::AVLNode *)> tree_dispose;
         tree_dispose = [&](avl::AVLNode *node) {

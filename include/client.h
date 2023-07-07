@@ -55,11 +55,13 @@ class Client {
 
     void handle_response(Bytes &buff, std::string pre = "") {
         auto type = static_cast<SerType>(buff.getNumber<int>(1));
+        // std::cout << type << " ";
 
         uint32_t str_len, arr_len;
         std::string_view str, msg;
         int64_t flag;
         CmdErr res_code;
+        double val;
 
         switch (type) {
             case SerType::SER_NIL:
@@ -80,9 +82,13 @@ class Client {
                 flag = buff.getNumber<int64_t>(8);
                 std::cout << pre << "[int]: " << flag << "\n";
                 break;
+            case SerType::SER_DBL:
+                val = buff.getNumber<double>(8);
+                std::cout << pre << "[dbl]: " << val << "\n";
+                break;
             case SerType::SER_ARR:
-                std::cout << pre << "[arr]: \n";
                 arr_len = buff.getNumber<uint32_t>(4);
+                std::cout << pre << "[arr]: len = " << arr_len << "\n";
                 for (int i = 0; i < arr_len; ++i) {
                     handle_response(buff, pre + "  ");
                 }

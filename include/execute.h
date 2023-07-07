@@ -3,11 +3,25 @@
 #include "common.h"
 #include "bytes.h"
 #include "hashtable.h"
+#include "zset.h"
 
 #include <string>
 #include <vector>
-#include <map>
-#include <tuple>
+#include <optional>
+#include <exception>
+#include <cmath>
+
+static bool str2dbl(const std::string &s, double &out) {
+    char *endp = NULL;
+    out = strtod(s.c_str(), &endp);
+    return endp == s.c_str() + s.size() && !std::isnan(out);
+}
+
+static bool str2int(const std::string &s, int64_t &out) {
+    char *endp = NULL;
+    out = strtoll(s.c_str(), &endp, 10);
+    return endp == s.c_str() + s.size();
+}
 
 namespace zedis {
 
@@ -51,13 +65,52 @@ void out_update_arr(Bytes &out, uint32_t n) {
 
 namespace core {
 
+    class CoreException : public std::exception {
+      public:
+        CoreException(CmdErr code, const std::string &message)
+            : m_code(code), m_message(message) {}
+
+        virtual const char *what() const noexcept {
+            return m_message.c_str(); // return the message as a C string
+        }
+
+        CmdErr getCode() const noexcept { return m_code; }
+
+      private:
+        CmdErr m_code;
+        std::string m_message;
+    };
+    /* try {
+     *     throw CoreException("An error occurred", CmdErr::...);
+     * } catch (const CoreException &e) {
+     *     std::string message = e.what();
+     *     auto code = e.getCode();
+     * }
+     */
+
+    enum class EntryType {
+        T_STR = 1,
+        T_ZSET = 2,
+    };
+
     struct Entry {
         HNode node;
+        EntryType type;
         std::string key, val;
+        std::shared_ptr<ZSet> zset;
         Entry() = delete;
-        Entry(const std::string &k) : key{k}, val{}, node{string_hash(k)} {}
+        Entry(const std::string &k)
+            : type{EntryType::T_STR}
+            , key{k}
+            , val{}
+            , node{string_hash(k)}
+            , zset{nullptr} {}
         Entry(std::string &&k, const std::string &v, uint64_t hcode)
-            : key(std::move(k)), val{v}, node{hcode} {}
+            : type{EntryType::T_STR}
+            , key(std::move(k))
+            , val{v}
+            , node{hcode}
+            , zset{nullptr} {}
     };
     HMap m_map{};
 
@@ -70,14 +123,23 @@ namespace core {
     std::optional<std::string> get(const std::string &k) {
         Entry key{k};
         HNode *node = m_map.lookup(&key.node, entry_eq);
-        if (!node) return std::optional<std::string>();
-        return std::make_optional(container_of(node, Entry, node)->val);
+        if (!node) std::optional<std::string>();
+        Entry *ent = container_of(node, Entry, node);
+        if (ent->type != EntryType::T_STR) {
+            throw CoreException(CmdErr::ERR_TYPE, "expect string type");
+        }
+        return std::make_optional<std::string>(ent->val);
     }
     void set(const std::string &k, const std::string &v) {
         Entry key{k};
         HNode *node = m_map.lookup(&key.node, entry_eq);
-        if (node) container_of(node, Entry, node)->val = v;
-        else {
+        if (node) {
+            Entry *ent = container_of(node, Entry, node);
+            if (ent->type != EntryType::T_STR) {
+                throw CoreException(CmdErr::ERR_TYPE, "expect string type");
+            }
+            ent->val = v;
+        } else {
             Entry *ent = new Entry{std::move(key.key), v, key.node.hcode};
             m_map.insert(&ent->node);
         }
@@ -104,6 +166,15 @@ namespace core {
         };
         m_map.dispose(node_dispose);
     }
+    Entry *get_zset_entry(const std::string &k) {
+        Entry key{k};
+        HNode *hnode = m_map.lookup(&key.node, entry_eq);
+        if (!hnode) return nullptr; // 没有
+
+        Entry *ent = container_of(hnode, Entry, node);
+        if (ent->type == EntryType::T_STR) return nullptr;
+        return ent;
+    }
 }; // namespace core
 
 bool cmd_is(const std::string_view word, const char *cmd) {
@@ -111,16 +182,28 @@ bool cmd_is(const std::string_view word, const char *cmd) {
 }
 
 void do_get(const std::vector<std::string> &cmd, Bytes &out) {
-    auto res = core::get(cmd[1]);
-    if (res.has_value()) {
-        out_str(out, res.value());
-    } else {
-        out_nil(out);
+    try {
+        auto res = core::get(cmd[1]);
+        if (res.has_value()) {
+            out_str(out, res.value());
+        } else {
+            out_nil(out);
+        }
+    } catch (const core::CoreException &e) {
+        auto code = e.getCode();
+        std::string message = e.what();
+        out_err(out, code, message);
     }
 }
 void do_set(const std::vector<std::string> &cmd, Bytes &out) {
-    core::set(cmd[1], cmd[2]);
-    out_nil(out);
+    try {
+        core::set(cmd[1], cmd[2]);
+        out_nil(out);
+    } catch (const core::CoreException &e) {
+        auto code = e.getCode();
+        std::string message = e.what();
+        out_err(out, code, message);
+    }
 }
 void do_del(const std::vector<std::string> &cmd, Bytes &out) {
     out_int(out, core::del(cmd[1]));
@@ -129,6 +212,104 @@ void do_del(const std::vector<std::string> &cmd, Bytes &out) {
 void do_keys(const std::vector<std::string> &cmd, Bytes &out) {
     out_arr(out, core::m_map.size());
     core::scan(out);
+}
+
+// ==
+
+void do_zadd(std::vector<std::string> &cmd, Bytes &out) {
+    double score = 0;
+    if (!str2dbl(cmd[2], score)) {
+        return out_err(out, CmdErr::ERR_ARG, "expect fp number");
+    }
+
+    // look up or create the zset
+    core::Entry key{cmd[1]};
+    HNode *hnode = core::m_map.lookup(&key.node, core::entry_eq);
+    core::Entry *ent = nullptr;
+    if (!hnode) {
+        ent = new core::Entry{std::move(key.key), "", key.node.hcode};
+
+        ent->type = core::EntryType::T_ZSET;
+        ent->zset = std::make_shared<ZSet>();
+        core::m_map.insert(&ent->node);
+    } else {
+        ent = container_of(hnode, core::Entry, node);
+        if (ent->type != core::EntryType::T_ZSET) {
+            return out_err(out, CmdErr::ERR_TYPE, "expect zset");
+        }
+    }
+
+    // add or update the tuple
+    const std::string &name = cmd[3];
+    auto ok = ent->zset->add(name, score);
+
+    out_int(out, (int64_t)ok);
+}
+
+static void do_zrem(std::vector<std::string> &cmd, Bytes &out) {
+    core::Entry *ent = core::get_zset_entry(cmd[1]);
+    if (!ent) {
+        out_nil(out);
+        return;
+    }
+
+    const std::string &name = cmd[2];
+    auto ok = ent->zset->pop(name);
+    out_int(out, (int64_t)ok);
+}
+
+void do_zscore(std::vector<std::string> &cmd, Bytes &out) {
+    core::Entry *ent = core::get_zset_entry(cmd[1]);
+    if (!ent) {
+        out_nil(out);
+        return;
+    }
+
+    const std::string &name = cmd[2];
+    auto res = ent->zset->find(name);
+    if (res.has_value()) out_dbl(out, res.value());
+    else
+        out_nil(out);
+}
+
+void do_zquery(const std::vector<std::string> &cmd, Bytes &out) {
+    // parse args
+    double score = 0;
+    if (!str2dbl(cmd[2], score)) {
+        return out_err(out, CmdErr::ERR_ARG, "expect fp number");
+    }
+    const std::string &name = cmd[3];
+    int64_t offset = 0;
+    int64_t limit = 0;
+    if (!str2int(cmd[4], offset)) {
+        return out_err(out, CmdErr::ERR_ARG, "expect int");
+    }
+    if (!str2int(cmd[5], limit)) {
+        return out_err(out, CmdErr::ERR_ARG, "expect int");
+    }
+
+    // get the zset
+    core::Entry *ent = core::get_zset_entry(cmd[1]);
+    if (!ent) {
+        out_err(out, CmdErr::ERR_TYPE, "expect zset");
+        return;
+    }
+
+    if (limit & 1) limit++;
+    limit >>= 1;
+
+    auto ite = ent->zset->query(score, name, offset, limit);
+
+    uint32_t n = 0;
+    Bytes buff;
+    for (auto sam : ite) {
+        out_str(buff, sam.name);
+        out_dbl(buff, sam.score);
+        n += 2;
+    }
+
+    out_arr(out, n);
+    out.appendBytes_move(std::move(buff));
 }
 
 bool parse_req(Bytes &data, std::vector<std::string> &cmd) {
@@ -141,16 +322,25 @@ bool parse_req(Bytes &data, std::vector<std::string> &cmd) {
     return true;
 }
 
-void interpret(std::vector<std::string> &cmds, Bytes &out) {
-    if (cmds.size() == 1 && cmd_is(cmds[0], "keys")) {
-        do_keys(cmds, out);
-    } else if (cmds.size() == 2 && cmd_is(cmds[0], "get")) {
-        do_get(cmds, out);
-    } else if (cmds.size() == 3 && cmd_is(cmds[0], "set")) {
-        do_set(cmds, out);
-    } else if (cmds.size() == 2 && cmd_is(cmds[0], "del")) {
-        do_del(cmds, out);
+void interpret(std::vector<std::string> &cmd, Bytes &out) {
+    if (cmd.size() == 1 && cmd_is(cmd[0], "keys")) {
+        do_keys(cmd, out);
+    } else if (cmd.size() == 2 && cmd_is(cmd[0], "get")) {
+        do_get(cmd, out);
+    } else if (cmd.size() == 3 && cmd_is(cmd[0], "set")) {
+        do_set(cmd, out);
+    } else if (cmd.size() == 2 && cmd_is(cmd[0], "del")) {
+        do_del(cmd, out);
+    } else if (cmd.size() == 4 && cmd_is(cmd[0], "zadd")) {
+        do_zadd(cmd, out);
+    } else if (cmd.size() == 3 && cmd_is(cmd[0], "zrem")) {
+        do_zrem(cmd, out);
+    } else if (cmd.size() == 3 && cmd_is(cmd[0], "zscore")) {
+        do_zscore(cmd, out);
+    } else if (cmd.size() == 6 && cmd_is(cmd[0], "zquery")) {
+        do_zquery(cmd, out);
     } else {
+        // cmd is not recognized
         out_err(out, CmdErr::ERR_UNKNOWN, "Unknown cmd");
     }
 }
