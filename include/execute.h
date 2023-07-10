@@ -5,6 +5,7 @@
 #include "hashtable.h"
 #include "zset.h"
 #include "heap.h"
+#include "thread_pool.h"
 
 #include <string>
 #include <vector>
@@ -91,6 +92,7 @@ namespace core {
 
     HMap m_map{};
     Heap m_heap{};
+    TheadPool tp;
 
     enum class EntryType {
         T_STR = 1,

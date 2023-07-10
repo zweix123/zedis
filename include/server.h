@@ -25,9 +25,17 @@ class Server {
     std::unordered_map<int, std::shared_ptr<Conn>> fd2conn;
     DList head;
     Heap &heap;
+    TheadPool &tp;
 
   public:
-    Server() : m_f{make_socket()}, fd2conn{}, head{}, heap{core::m_heap} {}
+    Server()
+        : m_f{make_socket()}
+        , fd2conn{}
+        , head{}
+        , heap{core::m_heap}
+        , tp{core::tp} {
+        thread_pool_init(&tp, 4);
+    }
 
     int make_socket() {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
