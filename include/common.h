@@ -3,6 +3,7 @@
 // C++ header files
 #include <cassert> // assert
 #include <memory>  // smart pointer
+#include <limits>
 #include <ctime>
 
 // global constant
@@ -46,6 +47,19 @@ uint64_t get_monotonic_usec() {
 } // namespace zedis
 
 #define DEBUG
+
+#define zog(x)     std::cout << #x << " = " << x;
+#define zogn(x)    std::cout << #x << " = " << x << "\n";
+#define zog2(x, y) std::cout << #x << " = " << x << ", " << #y << " = " << y;
+#define zogn2(x, y) \
+    std::cout << #x << " = " << x << ", " << #y << " = " << y << "\n";
+
+#define zog3(x, y, z)                                                       \
+    std::cout << #x << " = " << x << ", " << #y << " = " << y << ", " << #z \
+              << " = " << z;
+#define zogn3(x, y, z)                                                      \
+    std::cout << #x << " = " << x << ", " << #y << " = " << y << ", " << #z \
+              << " = " << z "\n";
 
 // custom header files
 #include "panic.h"

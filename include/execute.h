@@ -4,6 +4,7 @@
 #include "bytes.h"
 #include "hashtable.h"
 #include "zset.h"
+#include "heap.h"
 
 #include <string>
 #include <vector>
@@ -88,6 +89,9 @@ namespace core {
      * }
      */
 
+    HMap m_map{};
+    Heap m_heap{};
+
     enum class EntryType {
         T_STR = 1,
         T_ZSET = 2,
@@ -98,21 +102,44 @@ namespace core {
         EntryType type;
         std::string key, val;
         std::shared_ptr<ZSet> zset;
+        size_t heap_idx;
         Entry() = delete;
         Entry(const std::string &k)
             : type{EntryType::T_STR}
             , key{k}
             , val{}
             , node{string_hash(k)}
-            , zset{nullptr} {}
+            , zset{nullptr}
+            , heap_idx{0} {}
         Entry(std::string &&k, const std::string &v, uint64_t hcode)
             : type{EntryType::T_STR}
             , key(std::move(k))
             , val{v}
             , node{hcode}
-            , zset{nullptr} {}
+            , zset{nullptr}
+            , heap_idx{0} {}
+
+        ~Entry() { set_ttl(-1); }
+
+        void set_ttl(int64_t ttl_ms) {
+            if (ttl_ms < 0 && heap_idx != 0) {
+                // 如果设置的时间小于0就意味着这个结点超时了要去掉
+                size_t pos = heap_idx;
+                m_heap.del(pos);
+                heap_idx = 0;
+            } else if (ttl_ms >= 0) {
+                size_t pos = heap_idx;
+
+                uint64_t now_time =
+                    get_monotonic_usec() + (uint64_t)ttl_ms * 1000;
+                if (pos == 0) { // 这个entry可以之前不在堆中
+                    m_heap.push(now_time, &heap_idx);
+                } else {
+                    m_heap.set(pos, now_time);
+                }
+            }
+        }
     };
-    HMap m_map{};
 
     Cmp entry_eq = [](HNode *lhs, HNode *rhs) {
         Entry *le = container_of(lhs, Entry, node);
@@ -175,6 +202,7 @@ namespace core {
         if (ent->type == EntryType::T_STR) return nullptr;
         return ent;
     }
+
 }; // namespace core
 
 bool cmd_is(const std::string_view word, const char *cmd) {
@@ -312,6 +340,41 @@ void do_zquery(const std::vector<std::string> &cmd, Bytes &out) {
     out.appendBytes_move(std::move(buff));
 }
 
+void do_expire(const std::vector<std::string> &cmd, Bytes &out) {
+    int64_t ttl_ms = 0;
+    if (!str2int(cmd[2], ttl_ms)) {
+        out_err(out, CmdErr::ERR_ARG, "expect int64");
+        return;
+    }
+
+    core::Entry key{cmd[1]};
+    HNode *node = core::m_map.lookup(&key.node, core::entry_eq);
+
+    if (node) {
+        core::Entry *ent = container_of(node, core::Entry, node);
+        ent->set_ttl(ttl_ms);
+    }
+    out_int(out, node ? 1 : 0);
+    return;
+}
+
+void do_ttl(const std::vector<std::string> &cmd, Bytes &out) {
+    core::Entry key{cmd[1]};
+    HNode *node = core::m_map.lookup(&key.node, core::entry_eq);
+
+    if (!node) {
+        out_int(out, -2);
+        return;
+    }
+
+    core::Entry *ent = container_of(node, core::Entry, node);
+    if (ent->heap_idx == 0) { return out_int(out, -1); }
+
+    uint64_t expire_at = core::m_heap.get(ent->heap_idx);
+    uint64_t now_us = get_monotonic_usec();
+    return out_int(out, expire_at > now_us ? (expire_at - now_us) / 1000 : 0);
+}
+
 bool parse_req(Bytes &data, std::vector<std::string> &cmd) {
     if (data.is_read_end()) return false;
     auto cmd_num = data.getNumber<uint32_t>(4);
@@ -339,6 +402,10 @@ void interpret(std::vector<std::string> &cmd, Bytes &out) {
         do_zscore(cmd, out);
     } else if (cmd.size() == 6 && cmd_is(cmd[0], "zquery")) {
         do_zquery(cmd, out);
+    } else if (cmd.size() == 3 && cmd_is(cmd[0], "pexpire")) {
+        do_expire(cmd, out);
+    } else if (cmd.size() == 2 && cmd_is(cmd[0], "pttl")) {
+        do_ttl(cmd, out);
     } else {
         // cmd is not recognized
         out_err(out, CmdErr::ERR_UNKNOWN, "Unknown cmd");

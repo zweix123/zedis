@@ -1,5 +1,10 @@
 # zedis
 
+```bash
+# 内存泄露检测
+valgrind -s  --track-origins=yes --leak-check=full --tool=memcheck
+```
+
 ## Protocol
 
 对于request

@@ -17,8 +17,7 @@ struct ZNode {
     ZNode(const std::string &name_, double score_)
         : avl_node{}, h_node{string_hash(name_)}, name{name_}, score{score_} {}
     friend std::ostream &operator<<(std::ostream &os, const ZNode &node) {
-        print_class("ZNode", "name", node.name, "score", node.score);
-        return os;
+        return os << class2str("ZNode", "name", node.name, "score", node.score);
     }
 };
 
@@ -88,10 +87,9 @@ class ZNodeCollection {
 
     friend std::ostream &
     operator<<(std::ostream &os, const ZNodeCollection &znode_colloction) {
-        print_class(
-            "ZNodeCollection", "data_", znode_colloction.data_, "length_",
-            znode_colloction.length_);
-        return os;
+        return os << class2str(
+                   "ZNodeCollection", "data_", znode_colloction.data_,
+                   "length_", znode_colloction.length_);
     }
 };
 

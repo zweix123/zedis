@@ -4,6 +4,8 @@
 #include "file.h"
 #include "connect.h"
 #include "list.h"
+#include "heap.h"
+#include "execute.h"
 
 #include <sys/socket.h> // socket syscall
 #include <arpa/inet.h>  // net address transform
@@ -22,9 +24,10 @@ class Server {
     File m_f;
     std::unordered_map<int, std::shared_ptr<Conn>> fd2conn;
     DList head;
+    Heap &heap;
 
   public:
-    Server() : m_f{make_socket()} {}
+    Server() : m_f{make_socket()}, fd2conn{}, head{}, heap{core::m_heap} {}
 
     int make_socket() {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -79,15 +82,20 @@ class Server {
     }
 
     uint32_t next_timer_ms() {
-        if (head.empty()) return 10000; // no timer, the value doesn't matter
-
         uint64_t now_us = get_monotonic_usec();
-        Conn *next = container_of(head.next, Conn, idle_node);
-        uint64_t next_us = next->idle_start + k_idle_timeout_ms * 1000;
-        if (next_us <= now_us) {
-            // missed?
-            return 0;
+        uint64_t next_us = std::numeric_limits<uint64_t>::max();
+
+        if (!head.empty()) {
+            Conn *next = container_of(head.next, Conn, idle_node);
+            next_us =
+                std::min(next_us, next->idle_start + k_idle_timeout_ms * 1000);
         }
+
+        if (!heap.empty()) { next_us = std::min(next_us, heap.get_min()); }
+
+        if (next_us == std::numeric_limits<uint64_t>::max()) return 10000;
+
+        if (next_us <= now_us) return 0;
 
         return (uint32_t)((next_us - now_us) / 1000);
     }
@@ -144,6 +152,8 @@ class Server {
     }
     void process_timers() {
         uint64_t now_us = get_monotonic_usec();
+
+        // idle timers
         while (!head.empty()) {
             Conn *next = container_of(head.next, Conn, idle_node);
             uint64_t next_us = next->idle_start + k_idle_timeout_ms * 1000;
@@ -155,8 +165,27 @@ class Server {
 
             std::cout << "removing idle connection: " << next->get_fd() << "\n";
             conn_done(next);
+
+            // TTL timers
+            const size_t k_max_works = 2000;
+            size_t nworks = 0;
+            while (!heap.empty() && heap.get_min() < now_us) {
+                core::Entry *ent =
+                    container_of(heap.get_min_ref(), core::Entry, heap_idx);
+                HNode *node =
+                    core::m_map.pop(&ent->node, [](HNode *lhs, HNode *rhs) {
+                        return lhs == rhs;
+                    });
+                assert(node == &ent->node);
+                delete ent;
+
+                if (nworks++ >= k_max_works) break;
+                // 这里要注意的, 在实际情况可能同时有大量的键过期,
+                // 这个释放的时间可能很长, 这里只是粗暴的限制每次次数
+            }
         }
     }
+
     void conn_done(Conn *conn) {
         fd2conn.erase(conn->get_fd());
         conn->idle_node.detach();
