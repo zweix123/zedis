@@ -3,6 +3,7 @@
 #include "common.h"
 #include "file.h"
 #include "connect.h"
+#include "list.h"
 
 #include <sys/socket.h> // socket syscall
 #include <arpa/inet.h>  // net address transform
@@ -13,10 +14,14 @@
 #include <unordered_map>
 
 namespace zedis {
+
+const uint64_t k_idle_timeout_ms = 5 * 1000;
+
 class Server {
   private:
     File m_f;
-    std::unordered_map<int, std::unique_ptr<Conn>> fd2conn;
+    std::unordered_map<int, std::shared_ptr<Conn>> fd2conn;
+    DList head;
 
   public:
     Server() : m_f{make_socket()} {}
@@ -41,7 +46,7 @@ class Server {
         return fd;
     }
 
-    void addNewConn(std::unique_ptr<Conn> conn) {
+    void addNewConn(std::shared_ptr<Conn> conn) {
         auto conn_fd = conn->get_fd();
         assert(
             fd2conn.find(conn_fd) != fd2conn.end()
@@ -63,13 +68,28 @@ class Server {
 
         File connf{connfd};
 
-        std::unique_ptr<Conn> conn =
-            std::make_unique<Conn>(std::move(connf), ConnState::STATE_REQ);
+        std::shared_ptr<Conn> conn =
+            std::make_shared<Conn>(std::move(connf), ConnState::STATE_REQ);
+        head.insert_before(&conn->idle_node);
 
         if (!conn) return -1; // 不用析构, connfd已经由connf接管
 
-        addNewConn(std::move(conn));
+        addNewConn(conn);
         return 0;
+    }
+
+    uint32_t next_timer_ms() {
+        if (head.empty()) return 10000; // no timer, the value doesn't matter
+
+        uint64_t now_us = get_monotonic_usec();
+        Conn *next = container_of(head.next, Conn, idle_node);
+        uint64_t next_us = next->idle_start + k_idle_timeout_ms * 1000;
+        if (next_us <= now_us) {
+            // missed?
+            return 0;
+        }
+
+        return (uint32_t)((next_us - now_us) / 1000);
     }
 
     void join() { // fb是套接字
@@ -95,25 +115,51 @@ class Server {
             }
 
             // poll for active fds
-            // the timeout argument doesn't matter here
-            int rv = poll(poll_args.data(), (nfds_t)poll_args.size(), 1000);
+            int timeout_ms = (int)next_timer_ms();
+            int rv =
+                poll(poll_args.data(), (nfds_t)poll_args.size(), timeout_ms);
             if (rv < 0) { err("poll"); }
 
             // sprocess active connections
             for (size_t i = 1; i < poll_args.size(); ++i) {
                 if (poll_args[i].revents) {
-                    fd2conn[poll_args[i].fd]->connection_io();
+                    auto conn = fd2conn[poll_args[i].fd];
+                    // conn->connection_io();
+                    conn->start_connection_io(&head);
+
                     // client closed normally, or something bad happened.
                     // destroy this connection
                     if (fd2conn[poll_args[i].fd]->is_end()) {
-                        fd2conn.erase(poll_args[i].fd);
+                        conn_done(conn.get());
                     }
                 }
             }
 
+            // handle timers
+            process_timers();
+
             // try to accept a new connection if the listening fd is active
             if (poll_args[0].revents) { (void)acceptConn(); }
         }
+    }
+    void process_timers() {
+        uint64_t now_us = get_monotonic_usec();
+        while (!head.empty()) {
+            Conn *next = container_of(head.next, Conn, idle_node);
+            uint64_t next_us = next->idle_start + k_idle_timeout_ms * 1000;
+            if (next_us >= now_us + 1000) {
+                // not ready, the extra 1000us is for the ms resolution of
+                // poll()
+                break;
+            }
+
+            std::cout << "removing idle connection: " << next->get_fd() << "\n";
+            conn_done(next);
+        }
+    }
+    void conn_done(Conn *conn) {
+        fd2conn.erase(conn->get_fd());
+        conn->idle_node.detach();
     }
 };
 } // namespace zedis

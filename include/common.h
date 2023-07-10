@@ -3,6 +3,7 @@
 // C++ header files
 #include <cassert> // assert
 #include <memory>  // smart pointer
+#include <ctime>
 
 // global constant
 namespace zedis {
@@ -35,6 +36,12 @@ enum class SerType {
         const typeof(((type *)0)->member) *__mptr = (ptr); \
         (type *)((char *)__mptr - offsetof(type, member)); \
     })
+
+uint64_t get_monotonic_usec() {
+    timespec tv = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &tv);
+    return uint64_t(tv.tv_sec) * 1000000 + tv.tv_nsec / 1000;
+}
 
 } // namespace zedis
 
