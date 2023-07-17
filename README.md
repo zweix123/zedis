@@ -1,22 +1,48 @@
 # zedis
 
+## Build
+
 ```bash
-# 内存泄露检测
-valgrind -s  --track-origins=yes --leak-check=full --tool=memcheck
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-## Protocol
+## Use
 
-对于request
++ 服务端: `./build/src/server`
++ 客户端: `./build/src/client`前缀, 后接命令, 支持命令如下:
+  ```
+  set 键 值
+  get 键
+  del 键
+  # 有序集
+  zadd 有序集名 键 值
+  zrem 有序集名 键 值  # 删除
+  zscore 有序集名 键  # 查询
+  zquery 有序集名 起始键 起始值 偏移量
+  # TTL
+  pexpire 键 存活时间  # 设置存活时间, 键应该提前set, 时间单位为毫秒
+  pttl 键            # 查看存活时间
+  ```
 
+## Develop
+
+### 通信协议
+
+客户端向服务端
 + 开始四个字节表示后面消息的字节数
-+ 对于内容
-  + 开始四个字节表示命令个数
-    + 对于每个命令
-      + 开始四个字节表示后面命令内容的字节数
-      + 命令内容
++ 开始四个字节表示命令个数
++ 每个命令四个字节表示命令字节数
 
-对于reponse
-
+服务端向客户端
 + 开始四个字节表示后面消息的字节数
-  + 内容使用TLV(type-length-value)格式
++ 消息使用TLV(type-length-value)格式
+
+### 内存泄露
+
++ 检测使用
+  ```bash
+  valgrind -s --track-origins=yes --leak-check=full --tool=memcheck 可执行文件
+  ```
