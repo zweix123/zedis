@@ -93,7 +93,8 @@
         "forward_list": "cpp",
         "executor": "cpp",
         "io_context": "cpp",
-        "netfwd": "cpp"
+        "netfwd": "cpp",
+        "shared_mutex": "cpp"
     },
     "cmake.buildTask": true,
     "C_Cpp.errorSquiggles": "disabled",
