@@ -1,5 +1,7 @@
 # zedis
 
+Redis的Modern C++简单实现（现在看来还不够Modern），内容包括：简单的Socket编程、聚焦于数据结构、零散的功能比如TTL。
+
 ## Build
 
 ```bash
@@ -18,13 +20,13 @@ make
   get 键
   del 键
   # 有序集
-  zadd 有序集名 键 值
-  zrem 有序集名 键 值  # 删除
+  zadd   有序集名 键 值
+  zrem   有序集名 键 值  # 删除
   zscore 有序集名 键  # 查询
   zquery 有序集名 起始键 起始值 偏移量
   # TTL
-  pexpire 键 存活时间  # 设置存活时间, 键应该提前set, 时间单位为毫秒
-  pttl 键            # 查看存活时间
+  pexpire 键 TTL  # 设置存活时间, 键应该提前set, 时间单位为毫秒
+  pttl    键      # 查看存活时间
   ```
 
 ## Develop

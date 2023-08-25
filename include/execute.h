@@ -5,7 +5,7 @@
 #include "hashtable.h"
 #include "zset.h"
 #include "heap.h"
-#include "thread_pool.h"
+#include "c_thread_pool.h"
 
 #include <string>
 #include <vector>
