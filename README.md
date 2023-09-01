@@ -1,14 +1,21 @@
 # zedis
 
-Redis的Modern C++简单实现（现在看来还不够Modern），内容包括：简单的Socket编程、聚焦于数据结构、零散的功能比如TTL。
+Redis的Modern C++实现，内容包括但不限于，简单的Socket编程，大量的侵入式数据结构实现，其他零散的Redis功能比如TTL。
+
+>目前看来项目还是有点问题  
+>一方面是项目文件结构，使用的[C++项目模板](https://github.com/Codesire-Deng/TemplateRepoCxx)不能处理自定义的库是声明和定义多文件的形式（而且我现阶段也没能力写出更好的）  
+>另一方面是代码整体风格不统一，发心是Modern C++，但是侵入式的数据结构不太容易用智能指针管理，后续考虑用CRTP进行改良。
+>>还是应该多看优秀的开源代码呀。
+
++ 项目需求，在学完《C++ Primer》之后，发现对很多C++11之后的特性和实践理解不够深，考虑在实践中进行更深的理解，而Web Server写的人太多了，接触到[《Build Your Own Redis with C/C++》](https://build-your-own.org/redis/)，调研后发现它的核心在于数据结构，有部分网络编程，同时也涉及Unix对多线程的API，虽然叫C/C++，其实更应该叫做C with vector and string，再考虑到Redis是很有名的开源软件，于是想根据这个资料将代码改写成Modern C++的mini Redis项目。
+
++ 网络部分：
+  + 字节流封装，TCP是面向字节的，双方拿到字节流后要自行解析
 
 ## Build
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+mkdir build -p && cd build && cmake .. && make
 ```
 
 ## Use

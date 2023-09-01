@@ -76,4 +76,6 @@ SpacesInSquareBrackets: false
 Standard: Latest
 UseCRLF:         false
 UseTab:          Never
+SortIncludes:          true
+SortUsingDeclarations: true
 ---
