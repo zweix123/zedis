@@ -2,11 +2,11 @@
 
 #include "common.h"
 
-#include <iostream>
-#include <cstring>
 #include <cstddef> // std::byte
-#include <vector>
+#include <cstring>
+#include <iostream>
 #include <string_view>
+#include <vector>
 
 namespace zedis {
 
@@ -22,13 +22,13 @@ class Bytes {
   public:
     Bytes() = default;
 
-    std::size_t size() const { return data.size(); }
+    [[nodiscard]] std::size_t size() const { return data.size(); }
     void reset() { pos = 0; }
     void clear() {
         data.clear();
         reset();
     }
-    bool is_read_end() const { return pos == data.size(); }
+    [[nodiscard]] bool is_read_end() const { return pos == data.size(); }
 
     friend std::ostream &operator<<(std::ostream &os, const Bytes &bytes) {
         std::cout << std::hex;

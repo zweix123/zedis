@@ -99,7 +99,14 @@
     "cmake.buildTask": true,
     "C_Cpp.errorSquiggles": "disabled",
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter"
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        },
     },
-    "python.formatting.provider": "none"
+    "isort.args": [
+        "--profile",
+        "black"
+    ],
 }
