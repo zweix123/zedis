@@ -1,17 +1,17 @@
 #pragma once
 
-#include "common.h"
 #include "bytes.h"
-#include "hashtable.h"
-#include "zset.h"
-#include "heap.h"
 #include "c_thread_pool.h"
+#include "common.h"
+#include "hashtable.h"
+#include "heap.h"
+#include "zset.h"
 
+#include <cmath>
+#include <exception>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
-#include <exception>
-#include <cmath>
 
 static bool str2dbl(const std::string &s, double &out) {
     char *endp = NULL;
@@ -378,7 +378,7 @@ void do_ttl(const std::vector<std::string> &cmd, Bytes &out) {
 }
 
 bool parse_req(Bytes &data, std::vector<std::string> &cmd) {
-    if (data.is_read_end()) return false;
+    if (data.is_read_end()) { return false; }
     auto cmd_num = data.getNumber<uint32_t>(4);
     while (cmd_num--) {
         auto cmd_len = data.getNumber<uint32_t>(4);

@@ -1,19 +1,19 @@
 #pragma once
 
 #include "common.h"
-#include "file.h"
 #include "connect.h"
-#include "list.h"
-#include "heap.h"
 #include "execute.h"
+#include "file.h"
+#include "heap.h"
+#include "list.h"
 
-#include <sys/socket.h> // socket syscall
 #include <arpa/inet.h>  // net address transform
 #include <netinet/ip.h> // ip data strcut
+#include <sys/socket.h> // socket syscall
 
-#include <vector>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace zedis {
 
@@ -28,16 +28,11 @@ class Server {
     TheadPool &tp;
 
   public:
-    Server()
-        : m_f{make_socket()}
-        , fd2conn{}
-        , head{}
-        , heap{core::m_heap}
-        , tp{core::tp} {
+    Server() : m_f{make_socket()}, heap{core::m_heap}, tp{core::tp} {
         thread_pool_init(&tp, 4);
     }
 
-    int make_socket() {
+    static int make_socket() {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0) { err("socket()"); }
 
@@ -83,7 +78,9 @@ class Server {
             std::make_shared<Conn>(std::move(connf), ConnState::STATE_REQ);
         head.insert_before(&conn->idle_node);
 
-        if (!conn) return -1; // 不用析构, connfd已经由connf接管
+        if (!conn) {
+            return -1; // 不用析构, connfd已经由connf接管
+        }
 
         addNewConn(conn);
         return 0;
@@ -101,9 +98,9 @@ class Server {
 
         if (!heap.empty()) { next_us = std::min(next_us, heap.get_min()); }
 
-        if (next_us == std::numeric_limits<uint64_t>::max()) return 10000;
+        if (next_us == std::numeric_limits<uint64_t>::max()) { return 10000; }
 
-        if (next_us <= now_us) return 0;
+        if (next_us <= now_us) { return 0; }
 
         return (uint32_t)((next_us - now_us) / 1000);
     }
@@ -122,7 +119,7 @@ class Server {
             poll_args.push_back(pfd);
             // connection fds
             for (auto const &[fd, conn] : fd2conn) {
-                if (!conn) continue;
+                if (!conn) { continue; }
                 struct pollfd pfd = {};
                 pfd.fd = conn->get_fd();
                 pfd.events = conn->get_event();
@@ -187,7 +184,7 @@ class Server {
                 assert(node == &ent->node);
                 delete ent;
 
-                if (nworks++ >= k_max_works) break;
+                if (nworks++ >= k_max_works) { break; }
                 // 这里要注意的, 在实际情况可能同时有大量的键过期,
                 // 这个释放的时间可能很长, 这里只是粗暴的限制每次次数
             }

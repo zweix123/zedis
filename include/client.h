@@ -3,12 +3,12 @@
 #include "common.h"
 #include "file.h"
 
-#include <sys/socket.h> // socket syscall
 #include <arpa/inet.h>  // net address transform
 #include <netinet/ip.h> // ip data strcut
+#include <sys/socket.h> // socket syscall
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace zedis {
 class Client {
@@ -20,7 +20,7 @@ class Client {
         //  m_f.set_nb();
     }
 
-    int make_socket() {
+    static int make_socket() {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0) { err("socket()"); }
 
@@ -45,7 +45,7 @@ class Client {
         buff.appendNumber(n, 4);
 
         for (const std::string &s : cmds) {
-            uint32_t p = (uint32_t)s.size();
+            auto p = (uint32_t)s.size();
             buff.appendNumber(p, 4);
             buff.appendString(s);
         }
@@ -53,7 +53,7 @@ class Client {
         assert(ok);
     }
 
-    void handle_response(Bytes &buff, std::string pre = "") {
+    void handle_response(Bytes &buff, const std::string &pre = "") {
         auto type = static_cast<SerType>(buff.getNumber<int>(1));
         // std::cout << type << " ";
 
