@@ -6,7 +6,7 @@ struct Node {
     std::string name;
     double score;
     bool operator<(const Node &node) const {
-        if (score != node.score) return score < node.score;
+        if (score != node.score) { return score < node.score; }
         return name < node.name;
     }
 };

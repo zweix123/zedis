@@ -1,12 +1,12 @@
 #include "common.h"
 #include "execute.h"
 
-#include <vector>
-#include <string>
 #include <initializer_list>
+#include <string>
+#include <vector>
 
-using std::vector;
 using std::string;
+using std::vector;
 using namespace zedis;
 
 void parse(Bytes &buff, std::string pre = "") {

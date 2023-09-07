@@ -1,5 +1,5 @@
-#include "common.h"
 #include "client.h"
+#include "common.h"
 
 int main(int argc, char **argv) {
     zedis::Client client{};

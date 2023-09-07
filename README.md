@@ -9,7 +9,13 @@ Redis的Modern C++实现，内容包括但不限于，简单的Socket编程，�
 
 + 项目需求，在学完《C++ Primer》之后，发现对很多C++11之后的特性和实践理解不够深，考虑在实践中进行更深的理解，而Web Server写的人太多了，接触到[《Build Your Own Redis with C/C++》](https://build-your-own.org/redis/)，调研后发现它的核心在于数据结构，有部分网络编程，同时也涉及Unix对多线程的API，虽然叫C/C++，其实更应该叫做C with vector and string，再考虑到Redis是很有名的开源软件，于是想根据这个资料将代码改写成Modern C++的mini Redis项目。
 
-+ 网络部分：
++ 辅助性代码: 
+  + `./include/common.h`: 包括全局枚举类、从类成员指针还原类指针的宏魔法`container_of`。
+  + `./include/panic.h`: 用于调试的`msg`和`err`宏
+  + `./include/ztream.h`: 针对项目中的类的human readable打印的`<<`重载
+  + `./include/zand.h`: 用来生成随机数或者随机字符串的简单封装
+
++ 网络部分: 
   + 字节流封装: `./include/bytes.h`，TCP是面向字节的，而S/C两端需要对字节进行解析。这里使用一个单独的类维护这里的字节流，要保证放入和取出的前后顺序，并提供相应的接口   
     使用`std::vector<std::byte>`存储内容，取额外的一个变量表示对字节流读的位置，在读和写时进行位置检测，另外就是支持多种类型的读和写  
     >但是现在看接口的设计依然有问题，不同的类型使用不同的方法，感觉不是很优雅  
@@ -36,8 +42,6 @@ Redis的Modern C++实现，内容包括但不限于，简单的Socket编程，�
   这个关于系统调用的封装在`file.h`中，结合系统调用的返回值和`errno`信号判断情况，然后将不同的情况使用不同的整数返回。交由connect处理。
   
   + 服务端：`./include/servef`：核心在一个死循环中，每次循环，都会尝试建立连接，然后将连接缓存；每次循环也会利用`poll`的系统调用检测那些连接可读或者结束。结束则清除对应缓存，以此往复。
-
-
 
 ## Build
 

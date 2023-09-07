@@ -1,5 +1,5 @@
-#include "common.h"
 #include "server.h"
+#include "common.h"
 
 int main() {
     zedis::Server server{};

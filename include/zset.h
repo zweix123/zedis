@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common.h"
 #include "avl.h"
+#include "common.h"
 #include "hashtable.h"
 
 #include <optional>

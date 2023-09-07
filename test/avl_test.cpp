@@ -1,13 +1,13 @@
-#include "common.h"
 #include "avl.h"
+#include "common.h"
 #include <set>
 
 using namespace zedis;
 
 struct Data {
-    avl::AVLNode node;
-    uint32_t val;
-    Data() : node{}, val{0} {}
+    avl::AVLNode node{};
+    uint32_t val{0};
+    Data() = default;
 };
 
 struct Container {
@@ -228,19 +228,20 @@ int main() {
 
     // insertion/deletion at various positions
     for (uint32_t i = 0; i < 200; ++i) {
-        std::cout << "insertion/deletion at various positions with i = " << i;
+        // std::cout << "insertion/deletion at various positions with i = " <<
+        // i;
         test_insert(i);
         test_insert_dup(i);
         test_remove(i);
-        std::cout << " \033[92mpass!\033[0m\n";
+        // std::cout << " \033[92mpass!\033[0m\n";
     }
 
     dispose(c);
 
     for (uint32_t i = 1; i < 500; ++i) {
-        std::cout << "offset with i = " << i;
+        // std::cout << "offset with i = " << i;
         test_case(i);
-        std::cout << " \033[92mpass!\033[0m\n";
+        // std::cout << " \033[92mpass!\033[0m\n";
     }
 
     std::cout << "\033[94mtest all pass\033[0m\n";

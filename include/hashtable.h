@@ -1,11 +1,11 @@
 #pragma once
 
 #include "common.h"
-#include <iostream>
-#include <vector>
-#include <string>
 #include <functional>
+#include <iostream>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace zedis {
 

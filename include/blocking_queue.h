@@ -1,7 +1,7 @@
 #pragma once
 
+#include <mutex> // unique_lock
 #include <queue>
-#include <mutex>        // unique_lock
 #include <shared_mutex> // shared_lock
 
 namespace zedis {
