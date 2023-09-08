@@ -163,12 +163,12 @@ class Server {
             Conn *next = container_of(head.next, Conn, idle_node);
             uint64_t next_us = next->idle_start + k_idle_timeout_ms * 1000;
             if (next_us >= now_us + 1000) {
-                // not ready, the extra 1000us is for the ms resolution of
-                // poll()
+                // not ready,
+                // the extra 1000us is for the ms resolution of poll()
                 break;
             }
 
-            std::cout << "removing idle connection: " << next->get_fd() << "\n";
+            // std::cout << "remove idle connect:" << next->get_fd() << '\n';
             conn_done(next);
 
             // TTL timers
