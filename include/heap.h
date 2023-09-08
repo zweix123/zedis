@@ -17,7 +17,7 @@ struct HeapItem {
     bool operator>(const HeapItem &other) const { return val > other.val; }
     bool operator<=(const HeapItem &other) const { return val <= other.val; }
     bool operator>=(const HeapItem &other) const { return val >= other.val; }
-    void change_ref(size_t pos) { *ref = pos; }
+    void change_ref(size_t pos) const { *ref = pos; }
 
     friend std::ostream &operator<<(std::ostream &os, const HeapItem &hi) {
         return os << class2str("HeapItem", "val", hi.val, "ref", hi.ref);
@@ -42,7 +42,7 @@ class Heap {
         while (now > 1) {
             next = now >> 1;
 
-            if (data[next] <= data[now]) break;
+            if (data[next] <= data[now]) { break; }
             std::swap(data[next], data[now]);
             now = next;
         }
@@ -54,8 +54,10 @@ class Heap {
         std::size_t next;
         while ((now << 1) < data.size()) {
             next = now << 1;
-            if (next < data.size() - 1 && data[next + 1] < data[next]) ++next;
-            if (data[now] < data[next]) break;
+            if (next < data.size() - 1 && data[next + 1] < data[next]) {
+                ++next;
+            }
+            if (data[now] < data[next]) { break; }
             std::swap(data[now], data[next]);
             now = next;
         }
@@ -81,7 +83,7 @@ class Heap {
         return os;
     }
 
-    bool empty() const { return data.size() == 1; }
+    [[nodiscard]] bool empty() const { return data.size() == 1; }
     uint64_t get_min() const {
         assert(!empty());
         return data[1].val;
